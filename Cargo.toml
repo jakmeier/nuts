@@ -1,0 +1,10 @@
+[package]
+name = "webnut"
+version = "0.1.0"
+authors = ["Jakob Meier <inbox@jakobmeier.ch>"]
+edition = "2018"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+
+
+[dependencies]
