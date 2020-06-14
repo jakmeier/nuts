@@ -1,65 +1,64 @@
 mod activity;
-pub use activity::*;
+mod filter;
+mod nut;
+mod publish;
+mod topic;
 
 #[cfg(test)]
 mod test;
 
+pub use activity::*;
+pub use filter::*;
+pub use topic::*;
+
+use publish::*;
+
 use crate::Activity;
-use std::any::Any;
-use std::cell::RefCell;
 
-thread_local!(static NUT: RefCell<Nut> = RefCell::new(Nut::new()));
-struct Nut {
-    // XXX: Vec is not right, should be append only Vec (because index are used)
-    activities: ActivityContainer,
-    updates: Vec<Handler>,
-}
-
-// pub type Handler<ACTIVITY> = Box<dyn Fn(&mut ACTIVITY) -> ()>;
-// type ActivityContainer = Vec<Box<dyn Activity>>;
-type ActivityContainer = Vec<Box<dyn Any>>; // XXX: Somehow, this only works with Any and not with Acticity
-type Handler = Box<dyn Fn(&mut ActivityContainer)>;
-
-impl Nut {
-    fn new() -> Self {
-        Self {
-            activities: Vec::new(),
-            updates: Vec::new(),
-        }
-    }
-    fn update(&mut self) {
-        for f in &self.updates {
-            f(&mut self.activities);
-        }
-    }
-}
-
-pub fn activity<A>(activity: A) -> ActivityId
+/// Consumes a struct that is registered as an Activity.
+/// Use the returned ActivityId to register callbacks on the activity.
+///
+/// start_active: Initial state of the activity
+pub fn new_activity<A>(activity: A, start_active: bool) -> ActivityId<A>
 where
     A: Activity,
 {
-    NUT.with(|nut| {
-        let mut nut = nut.borrow_mut();
-        nut.activities.push(Box::new(activity));
-        ActivityId::new::<A>(nut.activities.len() - 1)
-    })
+    nut::new_activity(activity, start_active)
 }
-pub fn register<A, F>(id: ActivityId, f: F)
+
+/// Explicitly call all update methods on all activities
+pub fn update() {
+    nut::publish_builtin(GlobalNotification::Update)
+}
+
+/// Explicitly call all draw methods on all activities
+pub fn draw() {
+    nut::publish_builtin(GlobalNotification::Draw)
+}
+
+/// Registers a callback closure on an activity with a specific topic to listen to.
+///
+/// By default, the activity will only receive calls when it is active.
+/// Use `subscribe_masked` for more control over this behavior.
+pub fn subscribe<A, F>(id: ActivityId<A>, topic: Topic, f: F)
 where
     A: Activity,
     F: Fn(&mut A) + 'static,
 {
-    NUT.with(|nut| {
-        let mut nut = nut.borrow_mut();
-        let index = id.index;
-        nut.updates
-            .push(Box::new(move |activities: &mut ActivityContainer| {
-                let a = activities[index].as_mut().downcast_mut::<A>().unwrap();
-                f(a);
-            }));
-    });
+    nut::register(id, topic, f, Default::default())
 }
 
-pub fn update() {
-    NUT.with(|nut| nut.borrow_mut().update())
+/// Registers a callback closure on an activity with a specific topic to listen to.
+pub fn subscribe_masked<A, F>(id: ActivityId<A>, topic: Topic, mask: SubscriptionFilter, f: F)
+where
+    A: Activity,
+    F: Fn(&mut A) + 'static,
+{
+    nut::register(id, topic, f, mask)
+}
+
+/// Changes the active status of an activity.
+/// If the status changes, the corresponding enter/leave subscriptions will be called.
+pub fn set_active<A: Activity>(id: ActivityId<A>, active: bool) {
+    nut::set_active(id, active)
 }
