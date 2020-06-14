@@ -1,28 +1,17 @@
-mod activity;
-mod filter;
 mod nut;
-mod publish;
-mod topic;
-
 #[cfg(target_arch = "wasm32")]
 mod web;
 
-#[cfg(test)]
-mod test;
-
-pub use activity::*;
-pub use filter::*;
-pub use topic::*;
+pub use nut::activity::*;
+pub use nut::iac::filter::*;
+pub use nut::iac::topic::*;
+use nut::iac::publish::*;
 
 #[cfg(target_arch = "wasm32")]
 pub use web::*;
 #[cfg(target_arch = "wasm32")]
 #[macro_use]
 extern crate stdweb;
-
-use publish::*;
-
-use crate::Activity;
 
 /// Consumes a struct that is registered as an Activity.
 /// Use the returned ActivityId to register callbacks on the activity.

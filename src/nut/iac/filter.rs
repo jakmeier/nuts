@@ -1,4 +1,4 @@
-use crate::activity::*;
+use crate::*;
 
 /// Defines under which circumstances a subscribing activity should be called.
 #[derive(Debug, Clone)]
