@@ -4,12 +4,21 @@ mod nut;
 mod publish;
 mod topic;
 
+#[cfg(target_arch = "wasm32")]
+mod web;
+
 #[cfg(test)]
 mod test;
 
 pub use activity::*;
 pub use filter::*;
 pub use topic::*;
+
+#[cfg(target_arch = "wasm32")]
+pub use web::*;
+#[cfg(target_arch = "wasm32")]
+#[macro_use]
+extern crate stdweb;
 
 use publish::*;
 
@@ -27,11 +36,13 @@ where
 }
 
 /// Explicitly call all update methods on all activities
+/// (Usually not necessary when using `auto_update`)
 pub fn update() {
     nut::publish_builtin(GlobalNotification::Update)
 }
 
 /// Explicitly call all draw methods on all activities
+/// (Usually not necessary when using `auto_draw`)
 pub fn draw() {
     nut::publish_builtin(GlobalNotification::Draw)
 }
