@@ -1,13 +1,16 @@
+use crate::nut::iac::{filter::SubscriptionFilter, managed_state::DomainId, topic::Topic};
 use crate::nut::Handler;
 use std::any::Any;
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
 pub trait Activity: Any {}
+impl<T: Any> Activity for T {}
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct ActivityId<A> {
     pub(crate) index: usize,
+    pub(crate) domain_index: DomainId,
     phantom: std::marker::PhantomData<A>,
 }
 
@@ -28,26 +31,44 @@ pub(crate) struct ActivityHandlerContainer {
 }
 
 impl<A: Activity> ActivityId<A> {
-    pub fn new(index: usize) -> Self {
+    pub(crate) fn new(index: usize, domain_index: DomainId) -> Self {
         Self {
             index,
+            domain_index,
             phantom: Default::default(),
         }
     }
+    /// Registers a callback closure on an activity with a specific topic to listen to.
+    ///
+    /// By default, the activity will only receive calls when it is active.
+    /// Use `subscribe_masked` for more control over this behavior.
+    pub fn subscribe<F>(&self, topic: Topic, f: F)
+    where
+        F: Fn(&mut A) + 'static,
+    {
+        crate::nut::register(*self, topic, move |activity, _| f(activity), Default::default())
+    }
+
+    /// Registers a callback closure on an activity with a specific topic to listen to.
+    pub fn subscribe_masked<F>(&self, topic: Topic, mask: SubscriptionFilter, f: F)
+    where
+        F: Fn(&mut A) + 'static,
+    {
+        crate::nut::register(*self, topic, move |activity, _| f(activity), mask)
+    }
 }
 
-// TODO?: could be a trait
 impl ActivityContainer {
-    pub fn add<A: Activity>(&mut self, a: A, start_active: bool) -> ActivityId<A> {
+    pub(crate) fn add<A: Activity>(&mut self, a: A, domain: DomainId, start_active: bool) -> ActivityId<A> {
         let i = self.data.len();
         self.data.push(Some(Box::new(a)));
         self.active.push(start_active);
-        ActivityId::new(i)
+        ActivityId::new(i, domain)
     }
-    pub fn is_active<A: Activity>(&self, id: ActivityId<A>) -> bool {
+    pub(crate) fn is_active<A: Activity>(&self, id: ActivityId<A>) -> bool {
         self.active[id.index]
     }
-    pub fn set_active<A: Activity>(&mut self, id: ActivityId<A>, active: bool) {
+    pub(crate) fn set_active<A: Activity>(&mut self, id: ActivityId<A>, active: bool) {
         self.active[id.index] = active
     }
 }

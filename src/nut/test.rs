@@ -6,8 +6,6 @@ struct TestActivity {
     counter: Rc<Cell<u32>>,
 }
 
-impl Activity for TestActivity {}
-
 impl TestActivity {
     fn new() -> Self {
         let shared_counter = Rc::new(Cell::new(0));
@@ -32,7 +30,7 @@ fn closure_registration() {
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();
     let id = crate::new_activity(a, true);
-    crate::subscribe(id, Topic::update(), |activity: &mut TestActivity| {
+    id.subscribe(Topic::update(), |activity: &mut TestActivity| {
         activity.inc(1);
     });
     assert_eq!(counter.get(), 0, "Closure called before update call");
@@ -50,7 +48,7 @@ fn active_inactive() {
     let id = crate::new_activity(a, false);
 
     // Register for active only
-    crate::subscribe(id, Topic::update(), |activity: &mut TestActivity| {
+    id.subscribe(Topic::update(), |activity: &mut TestActivity| {
         activity.inc(1);
     });
 
@@ -67,10 +65,10 @@ fn enter_leave() {
     let counter = a.shared_counter_ref();
     let id = crate::new_activity(a, true);
 
-    crate::subscribe(id, Topic::enter(), |activity: &mut TestActivity| {
+    id.subscribe(Topic::enter(), |activity: &mut TestActivity| {
         activity.inc(1);
     });
-    crate::subscribe(id, Topic::leave(), |activity: &mut TestActivity| {
+    id.subscribe(Topic::leave(), |activity: &mut TestActivity| {
         activity.inc(10);
     });
 

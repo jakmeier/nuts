@@ -18,7 +18,7 @@ impl Nut {
             GlobalNotification::Update => &self.updates,
         };
         for f in handlers {
-            f(&mut self.activities);
+            f(&mut self.activities, &mut self.managed_state);
         }
     }
     pub fn publish<A: Activity>(&mut self, id: ActivityId<A>, topic: LocalNotification) {
@@ -28,7 +28,7 @@ impl Nut {
         };
         for f in handlers.iter_for(id) {
             println!("Calling now");
-            f(&mut self.activities);
+            f(&mut self.activities, &mut self.managed_state);
         }
     }
 }
