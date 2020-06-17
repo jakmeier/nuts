@@ -1,5 +1,6 @@
 use crate::nut::iac::{filter::SubscriptionFilter, managed_state::DomainId, topic::Topic};
 use crate::nut::Handler;
+use crate::*;
 use std::any::Any;
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
@@ -46,20 +47,52 @@ impl<A: Activity> ActivityId<A> {
     where
         F: Fn(&mut A) + 'static,
     {
-        crate::nut::register(*self, topic, move |activity, _| f(activity), Default::default())
+        crate::nut::register(*self, topic, f, Default::default())
     }
 
     /// Registers a callback closure on an activity with a specific topic to listen to.
+    /// Has mutable access to the DomainState object.
+    ///
+    /// By default, the activity will only receive calls when it is active.
+    /// Use `subscribe_domained_masked` for more control over this behavior.
+    ///
+    /// # Panics
+    /// Panics if the activity has not been registered with a domain.
+    pub fn subscribe_domained<F>(&self, topic: Topic, f: F)
+    where
+        F: Fn(&mut A, &mut DomainState) + 'static,
+    {
+        crate::nut::register_domained(*self, topic, f, Default::default())
+    }
+
+    /// Registers a callback closure on an activity with a specific topic to listen to with filtering options.
     pub fn subscribe_masked<F>(&self, topic: Topic, mask: SubscriptionFilter, f: F)
     where
         F: Fn(&mut A) + 'static,
     {
-        crate::nut::register(*self, topic, move |activity, _| f(activity), mask)
+        crate::nut::register(*self, topic, f, mask)
+    }
+
+    /// Registers a callback closure on an activity with a specific topic to listen to with filtering options.
+    /// Has mutable access to the DomainState object.
+    ///
+    /// # Panics
+    /// Panics if the activity has not been registered with a domain.
+    pub fn subscribe_domained_masked<F>(&self, topic: Topic, mask: SubscriptionFilter, f: F)
+    where
+        F: Fn(&mut A, &mut DomainState) + 'static,
+    {
+        crate::nut::register_domained(*self, topic, f, mask)
     }
 }
 
 impl ActivityContainer {
-    pub(crate) fn add<A: Activity>(&mut self, a: A, domain: DomainId, start_active: bool) -> ActivityId<A> {
+    pub(crate) fn add<A: Activity>(
+        &mut self,
+        a: A,
+        domain: DomainId,
+        start_active: bool,
+    ) -> ActivityId<A> {
         let i = self.data.len();
         self.data.push(Some(Box::new(a)));
         self.active.push(start_active);

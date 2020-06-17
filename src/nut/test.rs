@@ -22,6 +22,13 @@ impl TestActivity {
     }
 }
 
+#[derive(Clone, Copy)]
+enum TestDomains {
+    DomainA,
+    _DomainB,
+}
+domain_enum!(TestDomains);
+
 #[test]
 // A simple sanity test for registering an activity.
 // The registered function should crucially only be called once.
@@ -80,4 +87,17 @@ fn enter_leave() {
 
     crate::set_active(id, true);
     assert_eq!(counter.get(), 11);
+}
+
+#[test]
+fn domained_activity() {
+    let a = TestActivity::new();
+    let d = TestDomains::DomainA;
+    crate::store_to_domain(d, 7usize);
+    let id = crate::new_domained_activity(a, d, true);
+    id.subscribe_domained(Topic::update(), |_activity, domain| {
+        let x: usize = *domain.get();
+        assert_eq!(7, x);
+    });
+    crate::update();
 }

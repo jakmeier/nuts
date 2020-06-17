@@ -2,8 +2,11 @@
 //!
 //! Objects to which multiple activities have access
 
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
+mod domain_id;
+mod domain_state;
+
+pub use domain_id::*;
+pub use domain_state::*;
 
 #[derive(Default)]
 pub(crate) struct ManagedState {
@@ -24,43 +27,15 @@ pub(crate) struct ManagedState {
     // (This is justified because it is relevant to thread assignment in the browser)
 }
 
-#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub(crate) struct DomainId(Option<usize>);
-
-pub trait DomainEnumeration {
-    fn id(&self) -> usize;
-}
-
-#[derive(Default)]
-pub struct DomainState {
-    objects: HashMap<TypeId, Box<dyn Any>>,
-}
-
-impl DomainId {
-    pub(crate) fn new(d: impl DomainEnumeration) -> DomainId {
-        DomainId(Some(d.id()))
-    }
-}
-
 impl ManagedState {
     pub(crate) fn get_mut(&mut self, id: DomainId) -> Option<&mut DomainState> {
-        id.0.map(move |i| &mut self.domains[i])
+        id.index().map(move |i| &mut self.domains[i])
     }
     pub(crate) fn prepare(&mut self, id: DomainId) {
-        if let Some(n) = id.0 {
-            while self.domains.len() < n {
+        if let Some(n) = id.index() {
+            while self.domains.len() <= n {
                 self.domains.push(Default::default());
             }
         }
     }
-}
-
-impl DomainState {
-    // TODO: Some way to add and borrow data
-    // pub fn get<T: Any>(&self) -> &T {
-    //     self.objects
-    //         .get(&TypeId::of::<T>())
-    //         .map(|obj| obj.downcast().as_ref().unwrap())
-    //         .expect("Not in domain")
-    // }
 }

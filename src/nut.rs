@@ -54,7 +54,7 @@ pub(crate) fn publish_builtin(topic: GlobalNotification) {
 pub(crate) fn register<A, F>(id: ActivityId<A>, topic: Topic, f: F, filter: SubscriptionFilter)
 where
     A: Activity,
-    F: Fn(&mut A, Option<&mut DomainState>) + 'static,
+    F: Fn(&mut A) + 'static,
 {
     NUT.with(|nut| {
         let mut nut = nut.borrow_mut();
@@ -76,10 +76,56 @@ where
     });
 }
 
+pub(crate) fn register_domained<A, F>(
+    id: ActivityId<A>,
+    topic: Topic,
+    f: F,
+    filter: SubscriptionFilter,
+) where
+    A: Activity,
+    F: Fn(&mut A, &mut DomainState) + 'static,
+{
+    NUT.with(|nut| {
+        let mut nut = nut.borrow_mut();
+        let closure = pack_domained_closure(f, id, filter);
+        match topic {
+            Topic::Builtin(BuiltinTopic::Update) => {
+                nut.updates.push(closure);
+            }
+            Topic::Builtin(BuiltinTopic::Draw) => {
+                nut.draw.push(closure);
+            }
+            Topic::Builtin(BuiltinTopic::Enter) => {
+                nut.enter[id].push(closure);
+            }
+            Topic::Builtin(BuiltinTopic::Leave) => {
+                nut.leave[id].push(closure);
+            }
+        }
+    });
+}
+
 fn pack_closure<A, F>(f: F, index: ActivityId<A>, filter: SubscriptionFilter) -> Handler
 where
     A: Activity,
-    F: Fn(&mut A, Option<&mut DomainState>) + 'static,
+    F: Fn(&mut A) + 'static,
+{
+    Box::new(
+        move |activities: &mut ActivityContainer, _ms: &mut ManagedState| {
+            if activities.filter(index, &filter) {
+                let a = activities[index]
+                    .downcast_mut::<A>()
+                    .expect("Wrong activity"); // deleted and replaced?
+                f(a)
+            }
+        },
+    )
+}
+
+fn pack_domained_closure<A, F>(f: F, index: ActivityId<A>, filter: SubscriptionFilter) -> Handler
+where
+    A: Activity,
+    F: Fn(&mut A, &mut DomainState) + 'static,
 {
     Box::new(
         move |activities: &mut ActivityContainer, ms: &mut ManagedState| {
@@ -87,7 +133,9 @@ where
                 let a = activities[index]
                     .downcast_mut::<A>()
                     .expect("Wrong activity"); // deleted and replaced?
-                let domain = ms.get_mut(index.domain_index);
+                let domain = ms
+                    .get_mut(index.domain_index)
+                    .expect("Activity has no domain");
                 f(a, domain)
             }
         },
@@ -110,4 +158,18 @@ pub(crate) fn set_active<A: Activity>(id: ActivityId<A>, active: bool) {
             }
         }
     });
+}
+
+pub(crate) fn write_domain<D, T>(domain: D, data: T)
+where
+    D: DomainEnumeration,
+    T: std::any::Any,
+{
+    NUT.with(|nut| {
+        let id = DomainId::new(domain);
+        let mut nut = nut.borrow_mut();
+        nut.managed_state.prepare(id);
+        let storage = nut.managed_state.get_mut(id).expect("No domain");
+        storage.store(data)
+    })
 }
