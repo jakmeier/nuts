@@ -16,7 +16,7 @@ impl DomainState {
             .map(|obj| obj.as_ref().downcast_ref().unwrap())
             .expect("Not in domain")
     }
-    pub fn get_mut<T: Any>(&mut self) -> &T {
+    pub fn get_mut<T: Any>(&mut self) -> &mut T {
         self.objects
             .get_mut(&TypeId::of::<T>())
             .map(|obj| obj.as_mut().downcast_mut().unwrap())

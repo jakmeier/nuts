@@ -2,6 +2,7 @@
 #[derive(Debug, Clone)]
 pub enum Topic {
     Builtin(BuiltinTopic),
+    Custom(&'static str),
 }
 
 /// Built-in topics are understood by webnut and it may generate events for it

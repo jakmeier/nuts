@@ -7,6 +7,7 @@ mod test;
 use crate::*;
 use iac::managed_state::*;
 use std::cell::RefCell;
+use std::collections::HashMap;
 
 thread_local!(static NUT: RefCell<Nut> = RefCell::new(Nut::new()));
 
@@ -19,7 +20,7 @@ struct Nut {
     draw: Vec<Handler>,
     enter: ActivityHandlerContainer,
     leave: ActivityHandlerContainer,
-    // TODO: listen-event
+    custom: HashMap<&'static str, ActivityHandlerContainer>,
 }
 
 /// A method that can be called by the ActivityManager.
@@ -29,6 +30,25 @@ type Handler = Box<dyn Fn(&mut ActivityContainer, &mut ManagedState)>;
 impl Nut {
     fn new() -> Self {
         Default::default()
+    }
+    fn push_closure<A: 'static>(&mut self, topic: Topic, id: ActivityId<A>, closure: Handler) {
+        match topic {
+            Topic::Builtin(BuiltinTopic::Update) => {
+                self.updates.push(closure);
+            }
+            Topic::Builtin(BuiltinTopic::Draw) => {
+                self.draw.push(closure);
+            }
+            Topic::Builtin(BuiltinTopic::Enter) => {
+                self.enter[id].push(closure);
+            }
+            Topic::Builtin(BuiltinTopic::Leave) => {
+                self.leave[id].push(closure);
+            }
+            Topic::Custom(s) => {
+                self.custom.entry(s).or_insert_with(Default::default)[id].push(closure);
+            }
+        }
     }
 }
 
@@ -59,20 +79,7 @@ where
     NUT.with(|nut| {
         let mut nut = nut.borrow_mut();
         let closure = pack_closure(f, id, filter);
-        match topic {
-            Topic::Builtin(BuiltinTopic::Update) => {
-                nut.updates.push(closure);
-            }
-            Topic::Builtin(BuiltinTopic::Draw) => {
-                nut.draw.push(closure);
-            }
-            Topic::Builtin(BuiltinTopic::Enter) => {
-                nut.enter[id].push(closure);
-            }
-            Topic::Builtin(BuiltinTopic::Leave) => {
-                nut.leave[id].push(closure);
-            }
-        }
+        nut.push_closure(topic, id, closure);
     });
 }
 
@@ -88,20 +95,7 @@ pub(crate) fn register_domained<A, F>(
     NUT.with(|nut| {
         let mut nut = nut.borrow_mut();
         let closure = pack_domained_closure(f, id, filter);
-        match topic {
-            Topic::Builtin(BuiltinTopic::Update) => {
-                nut.updates.push(closure);
-            }
-            Topic::Builtin(BuiltinTopic::Draw) => {
-                nut.draw.push(closure);
-            }
-            Topic::Builtin(BuiltinTopic::Enter) => {
-                nut.enter[id].push(closure);
-            }
-            Topic::Builtin(BuiltinTopic::Leave) => {
-                nut.leave[id].push(closure);
-            }
-        }
+        nut.push_closure(topic, id, closure);
     });
 }
 
