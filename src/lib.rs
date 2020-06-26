@@ -3,12 +3,12 @@ mod nut;
 mod web;
 
 pub use crate::nut::iac::managed_state::{DomainEnumeration, DomainState};
+use core::any::Any;
 pub use nut::activity::*;
 pub use nut::iac::filter::*;
 pub use nut::iac::topic::*;
 
 use nut::iac::managed_state::*;
-use nut::iac::publish::*;
 
 #[cfg(target_arch = "wasm32")]
 pub use web::*;
@@ -51,16 +51,8 @@ where
     nut::write_domain(domain, data)
 }
 
-/// Explicitly call all update methods on all activities
-/// (Usually not necessary when using `auto_update`)
-pub fn update() {
-    nut::publish_builtin(GlobalNotification::Update)
-}
-
-/// Explicitly call all draw methods on all activities
-/// (Usually not necessary when using `auto_draw`)
-pub fn draw() {
-    nut::publish_builtin(GlobalNotification::Draw)
+pub fn publish<A: Any>(a: A) {
+    nut::publish_custom(a)
 }
 
 /// Changes the active status of an activity.

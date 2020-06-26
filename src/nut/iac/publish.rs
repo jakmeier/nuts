@@ -1,34 +1,31 @@
 use crate::nut::Nut;
 use crate::*;
-
-pub(crate) enum GlobalNotification {
-    Draw,
-    Update,
-}
-
-pub(crate) enum LocalNotification {
-    Enter,
-    Leave,
-}
+use core::any::{Any, TypeId};
 
 impl Nut {
-    pub fn publish_global(&mut self, topic: GlobalNotification) {
-        let handlers = match topic {
-            GlobalNotification::Draw => &self.draw,
-            GlobalNotification::Update => &self.updates,
-        };
-        for f in handlers {
-            f(&mut self.activities, &mut self.managed_state);
+    pub fn publish_local<A: Activity, MSG: Any>(
+        &mut self,
+        id: ActivityId<A>,
+        topic: Topic,
+        a: MSG,
+    ) {
+        self.managed_state.push_broadcast(a);
+        if let Some(handlers) = self.subscriptions.get(&topic) {
+            for f in handlers.iter_for(id) {
+                f(&mut self.activities, &mut self.managed_state);
+            }
         }
+        self.managed_state.end_current_broadcast();
     }
-    pub fn publish<A: Activity>(&mut self, id: ActivityId<A>, topic: LocalNotification) {
-        let handlers = match topic {
-            LocalNotification::Enter => &self.enter,
-            LocalNotification::Leave => &self.leave,
-        };
-        for f in handlers.iter_for(id) {
-            println!("Calling now");
-            f(&mut self.activities, &mut self.managed_state);
+    pub fn publish<MSG: Any>(&mut self, a: MSG) {
+        self.managed_state.push_broadcast(a);
+        let t = TypeId::of::<MSG>();
+        let topic = Topic::Custom(t);
+        if let Some(handlers) = self.subscriptions.get(&topic) {
+            for f in handlers.iter() {
+                f(&mut self.activities, &mut self.managed_state);
+            }
         }
+        self.managed_state.end_current_broadcast();
     }
 }

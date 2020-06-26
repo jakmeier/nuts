@@ -1,4 +1,4 @@
-use crate::nut::iac::{filter::SubscriptionFilter, managed_state::DomainId, topic::Topic};
+use crate::nut::iac::{filter::SubscriptionFilter, managed_state::DomainId};
 use crate::nut::Handler;
 use crate::*;
 use std::any::Any;
@@ -39,15 +39,30 @@ impl<A: Activity> ActivityId<A> {
             phantom: Default::default(),
         }
     }
+    /// Registers a callback closure that is called when an activity changes from inactive to active.
+    pub fn on_enter<F>(&self, f: F)
+    where
+        F: Fn(&mut A) + 'static,
+    {
+        crate::nut::register_no_payload(*self, f, Topic::enter())
+    }
+    /// Registers a callback closure that is called when an activity changes from active to inactive.
+    pub fn on_leave<F>(&self, f: F)
+    where
+        F: Fn(&mut A) + 'static,
+    {
+        crate::nut::register_no_payload(*self, f, Topic::leave())
+    }
     /// Registers a callback closure on an activity with a specific topic to listen to.
     ///
     /// By default, the activity will only receive calls when it is active.
     /// Use `subscribe_masked` for more control over this behavior.
-    pub fn subscribe<F>(&self, topic: Topic, f: F)
+    pub fn subscribe<F, MSG>(&self, f: F)
     where
-        F: Fn(&mut A) + 'static,
+        F: Fn(&mut A, &MSG) + 'static,
+        MSG: Any,
     {
-        crate::nut::register(*self, topic, f, Default::default())
+        crate::nut::register(*self, f, Default::default())
     }
 
     /// Registers a callback closure on an activity with a specific topic to listen to.
@@ -57,20 +72,22 @@ impl<A: Activity> ActivityId<A> {
     /// Use `subscribe_domained_masked` for more control over this behavior.
     ///
     /// # Panics
-    /// Panics if the activity has not been registered with a domain.
-    pub fn subscribe_domained<F>(&self, topic: Topic, f: F)
+    /// Panics if the activity has not been registered with a domain.    
+    pub fn subscribe_domained<F, MSG>(&self, f: F)
     where
-        F: Fn(&mut A, &mut DomainState) + 'static,
+        F: Fn(&mut A, &mut DomainState, &MSG) + 'static,
+        MSG: Any,
     {
-        crate::nut::register_domained(*self, topic, f, Default::default())
+        crate::nut::register_domained(*self, f, Default::default())
     }
 
     /// Registers a callback closure on an activity with a specific topic to listen to with filtering options.
-    pub fn subscribe_masked<F>(&self, topic: Topic, mask: SubscriptionFilter, f: F)
+    pub fn subscribe_masked<F, MSG>(&self, mask: SubscriptionFilter, f: F)
     where
-        F: Fn(&mut A) + 'static,
+        F: Fn(&mut A, &MSG) + 'static,
+        MSG: Any,
     {
-        crate::nut::register(*self, topic, f, mask)
+        crate::nut::register(*self, f, mask)
     }
 
     /// Registers a callback closure on an activity with a specific topic to listen to with filtering options.
@@ -78,11 +95,12 @@ impl<A: Activity> ActivityId<A> {
     ///
     /// # Panics
     /// Panics if the activity has not been registered with a domain.
-    pub fn subscribe_domained_masked<F>(&self, topic: Topic, mask: SubscriptionFilter, f: F)
+    pub fn subscribe_domained_masked<F, MSG>(&self, mask: SubscriptionFilter, f: F)
     where
-        F: Fn(&mut A, &mut DomainState) + 'static,
+        F: Fn(&mut A, &mut DomainState, &MSG) + 'static,
+        MSG: Any,
     {
-        crate::nut::register_domained(*self, topic, f, mask)
+        crate::nut::register_domained(*self, f, mask)
     }
 }
 
@@ -125,6 +143,9 @@ impl<A: Activity> IndexMut<ActivityId<A>> for ActivityContainer {
 }
 
 impl ActivityHandlerContainer {
+    pub fn iter(&self) -> impl Iterator<Item = &Handler> {
+        self.data.values().flat_map(|f| f.iter())
+    }
     pub fn iter_for<A: Activity>(&self, id: ActivityId<A>) -> impl Iterator<Item = &Handler> {
         self.data.get(&id.index).into_iter().flat_map(|f| f.iter())
     }

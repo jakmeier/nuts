@@ -29,6 +29,8 @@ enum TestDomains {
 }
 domain_enum!(TestDomains);
 
+struct TestUpdateMsg;
+
 #[test]
 // A simple sanity test for registering an activity.
 // The registered function should crucially only be called once.
@@ -37,13 +39,13 @@ fn closure_registration() {
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();
     let id = crate::new_activity(a, true);
-    id.subscribe(Topic::update(), |activity: &mut TestActivity| {
+    id.subscribe(|activity: &mut TestActivity, _: &TestUpdateMsg| {
         activity.inc(1);
     });
     assert_eq!(counter.get(), 0, "Closure called before update call");
-    crate::update();
+    crate::publish(TestUpdateMsg);
     assert_eq!(counter.get(), 1);
-    crate::update();
+    crate::publish(TestUpdateMsg);
     assert_eq!(counter.get(), 2);
 }
 
@@ -55,14 +57,14 @@ fn active_inactive() {
     let id = crate::new_activity(a, false);
 
     // Register for active only
-    id.subscribe(Topic::update(), |activity: &mut TestActivity| {
+    id.subscribe(|activity: &mut TestActivity, _msg: &TestUpdateMsg| {
         activity.inc(1);
     });
 
-    crate::update();
+    crate::publish(TestUpdateMsg);
     assert_eq!(counter.get(), 0, "Called inactive activity");
     crate::set_active(id, true);
-    crate::update();
+    crate::publish(TestUpdateMsg);
     assert_eq!(counter.get(), 1, "Activation for activity didn't work");
 }
 
@@ -72,14 +74,14 @@ fn enter_leave() {
     let counter = a.shared_counter_ref();
     let id = crate::new_activity(a, true);
 
-    id.subscribe(Topic::enter(), |activity: &mut TestActivity| {
+    id.on_enter(|activity: &mut TestActivity| {
         activity.inc(1);
     });
-    id.subscribe(Topic::leave(), |activity: &mut TestActivity| {
+    id.on_leave(|activity: &mut TestActivity| {
         activity.inc(10);
     });
 
-    crate::update();
+    crate::publish(TestUpdateMsg);
     assert_eq!(counter.get(), 0, "Called enter/leave without status change");
 
     crate::set_active(id, false);
@@ -95,9 +97,31 @@ fn domained_activity() {
     let d = TestDomains::DomainA;
     crate::store_to_domain(d, 7usize);
     let id = crate::new_domained_activity(a, d, true);
-    id.subscribe_domained(Topic::update(), |_activity, domain| {
+    id.subscribe_domained(|_activity, domain, _msg: &TestUpdateMsg| {
         let x: usize = *domain.get();
         assert_eq!(7, x);
     });
-    crate::update();
+    crate::publish(TestUpdateMsg);
+}
+
+struct TestMessage(u32);
+#[test]
+fn message_passing() {
+    // Set up activity that increases a counter by the value specified in messages of type TestMessage
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let id = crate::new_activity(a, true);
+    id.subscribe(|activity, msg: &TestMessage| {
+        activity.inc(msg.0);
+    });
+
+    // Send different values and check that subscribed code has been called
+    crate::publish(TestMessage(13));
+    assert_eq!(counter.get(), 13);
+
+    crate::publish(TestMessage(13));
+    assert_eq!(counter.get(), 26);
+
+    crate::publish(TestMessage(100));
+    assert_eq!(counter.get(), 126);
 }

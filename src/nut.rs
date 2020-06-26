@@ -6,6 +6,7 @@ mod test;
 
 use crate::*;
 use iac::managed_state::*;
+use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -16,11 +17,7 @@ thread_local!(static NUT: RefCell<Nut> = RefCell::new(Nut::new()));
 struct Nut {
     activities: ActivityContainer,
     managed_state: ManagedState,
-    updates: Vec<Handler>,
-    draw: Vec<Handler>,
-    enter: ActivityHandlerContainer,
-    leave: ActivityHandlerContainer,
-    custom: HashMap<&'static str, ActivityHandlerContainer>,
+    subscriptions: HashMap<Topic, ActivityHandlerContainer>,
 }
 
 /// A method that can be called by the ActivityManager.
@@ -32,23 +29,10 @@ impl Nut {
         Default::default()
     }
     fn push_closure<A: 'static>(&mut self, topic: Topic, id: ActivityId<A>, closure: Handler) {
-        match topic {
-            Topic::Builtin(BuiltinTopic::Update) => {
-                self.updates.push(closure);
-            }
-            Topic::Builtin(BuiltinTopic::Draw) => {
-                self.draw.push(closure);
-            }
-            Topic::Builtin(BuiltinTopic::Enter) => {
-                self.enter[id].push(closure);
-            }
-            Topic::Builtin(BuiltinTopic::Leave) => {
-                self.leave[id].push(closure);
-            }
-            Topic::Custom(s) => {
-                self.custom.entry(s).or_insert_with(Default::default)[id].push(closure);
-            }
-        }
+        self.subscriptions
+            .entry(topic)
+            .or_insert_with(Default::default)[id]
+            .push(closure);
     }
 }
 
@@ -67,73 +51,50 @@ where
     })
 }
 
-pub(crate) fn publish_builtin(topic: GlobalNotification) {
-    NUT.with(|nut| nut.borrow_mut().publish_global(topic))
+pub(crate) fn publish_custom<A: Any>(a: A) {
+    NUT.with(|nut| nut.borrow_mut().publish(a))
 }
 
-pub(crate) fn register<A, F>(id: ActivityId<A>, topic: Topic, f: F, filter: SubscriptionFilter)
+pub(crate) fn register<A, F, MSG>(id: ActivityId<A>, f: F, filter: SubscriptionFilter)
+where
+    A: Activity,
+    F: Fn(&mut A, &MSG) + 'static,
+    MSG: Any,
+{
+    NUT.with(|nut| {
+        let mut nut = nut.borrow_mut();
+        let closure = ManagedState::pack_closure::<_, _, _, MSG>(f, id, filter);
+        let topic = Topic::custom::<MSG>();
+        nut.push_closure(topic, id, closure);
+    });
+}
+
+/// For subscriptions without payload
+pub(crate) fn register_no_payload<A, F>(id: ActivityId<A>, f: F, topic: Topic)
 where
     A: Activity,
     F: Fn(&mut A) + 'static,
 {
     NUT.with(|nut| {
         let mut nut = nut.borrow_mut();
-        let closure = pack_closure(f, id, filter);
+        let closure =
+            ManagedState::pack_closure::<_, _, _, ()>(move |a, ()| f(a), id, Default::default());
         nut.push_closure(topic, id, closure);
     });
 }
 
-pub(crate) fn register_domained<A, F>(
-    id: ActivityId<A>,
-    topic: Topic,
-    f: F,
-    filter: SubscriptionFilter,
-) where
+pub(crate) fn register_domained<A, F, MSG>(id: ActivityId<A>, f: F, filter: SubscriptionFilter)
+where
     A: Activity,
-    F: Fn(&mut A, &mut DomainState) + 'static,
+    F: Fn(&mut A, &mut DomainState, &MSG) + 'static,
+    MSG: Any,
 {
     NUT.with(|nut| {
         let mut nut = nut.borrow_mut();
-        let closure = pack_domained_closure(f, id, filter);
+        let closure = ManagedState::pack_domained_closure(f, id, filter);
+        let topic = Topic::custom::<MSG>();
         nut.push_closure(topic, id, closure);
     });
-}
-
-fn pack_closure<A, F>(f: F, index: ActivityId<A>, filter: SubscriptionFilter) -> Handler
-where
-    A: Activity,
-    F: Fn(&mut A) + 'static,
-{
-    Box::new(
-        move |activities: &mut ActivityContainer, _ms: &mut ManagedState| {
-            if activities.filter(index, &filter) {
-                let a = activities[index]
-                    .downcast_mut::<A>()
-                    .expect("Wrong activity"); // deleted and replaced?
-                f(a)
-            }
-        },
-    )
-}
-
-fn pack_domained_closure<A, F>(f: F, index: ActivityId<A>, filter: SubscriptionFilter) -> Handler
-where
-    A: Activity,
-    F: Fn(&mut A, &mut DomainState) + 'static,
-{
-    Box::new(
-        move |activities: &mut ActivityContainer, ms: &mut ManagedState| {
-            if activities.filter(index, &filter) {
-                let a = activities[index]
-                    .downcast_mut::<A>()
-                    .expect("Wrong activity"); // deleted and replaced?
-                let domain = ms
-                    .get_mut(index.domain_index)
-                    .expect("Activity has no domain");
-                f(a, domain)
-            }
-        },
-    )
 }
 
 pub(crate) fn set_active<A: Activity>(id: ActivityId<A>, active: bool) {
@@ -144,11 +105,11 @@ pub(crate) fn set_active<A: Activity>(id: ActivityId<A>, active: bool) {
         if before != active {
             // Needs to be called before setting active, otherwise the active filter would mask the call
             if !active {
-                nut.publish(id, LocalNotification::Leave);
+                nut.publish_local(id, Topic::leave(), ());
             }
             nut.activities.set_active(id, active);
             if active {
-                nut.publish(id, LocalNotification::Enter);
+                nut.publish_local(id, Topic::enter(), ());
             }
         }
     });
