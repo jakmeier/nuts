@@ -1,6 +1,6 @@
 use crate::nut::Nut;
 use crate::*;
-use core::any::{Any, TypeId};
+use core::any::Any;
 
 impl Nut {
     pub fn publish_local<A: Activity, MSG: Any>(
@@ -19,8 +19,7 @@ impl Nut {
     }
     pub fn publish<MSG: Any>(&mut self, a: MSG) {
         self.managed_state.push_broadcast(a);
-        let t = TypeId::of::<MSG>();
-        let topic = Topic::Custom(t);
+        let topic = Topic::message::<MSG>();
         if let Some(handlers) = self.subscriptions.get(&topic) {
             for f in handlers.iter() {
                 f(&mut self.activities, &mut self.managed_state);

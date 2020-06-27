@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::any::{Any, TypeId};
+use core::any::{Any, TypeId};
 
 #[derive(Default)]
 pub struct DomainState {

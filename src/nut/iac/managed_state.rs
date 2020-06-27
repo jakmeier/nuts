@@ -12,7 +12,7 @@ use crate::nut::iac::filter::SubscriptionFilter;
 use crate::nut::Handler;
 pub use domain_id::*;
 pub use domain_state::*;
-use std::any::Any;
+use core::any::Any;
 
 #[derive(Default)]
 pub(crate) struct ManagedState {

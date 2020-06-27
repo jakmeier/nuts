@@ -1,20 +1,12 @@
 mod nut;
-#[cfg(target_arch = "wasm32")]
-mod web;
 
 pub use crate::nut::iac::managed_state::{DomainEnumeration, DomainState};
 use core::any::Any;
 pub use nut::activity::*;
 pub use nut::iac::filter::*;
-pub use nut::iac::topic::*;
 
 use nut::iac::managed_state::*;
-
-#[cfg(target_arch = "wasm32")]
-pub use web::*;
-#[cfg(target_arch = "wasm32")]
-#[macro_use]
-extern crate stdweb;
+use nut::iac::topic::*;
 
 /// A method on an activity. Can be registered dynamically on activities at runtime.
 pub struct Method<ACTIVITY>(dyn Fn(&mut ACTIVITY, Option<&mut DomainState>));
@@ -46,7 +38,7 @@ where
 pub fn store_to_domain<D, T>(domain: D, data: T)
 where
     D: DomainEnumeration,
-    T: std::any::Any,
+    T: core::any::Any,
 {
     nut::write_domain(domain, data)
 }

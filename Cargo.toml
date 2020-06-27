@@ -8,6 +8,3 @@ readme = "README.md"
 
 
 [dependencies]
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-stdweb = "0.4"

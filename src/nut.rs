@@ -6,7 +6,7 @@ mod test;
 
 use crate::*;
 use iac::managed_state::*;
-use std::any::Any;
+use core::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -64,7 +64,7 @@ where
     NUT.with(|nut| {
         let mut nut = nut.borrow_mut();
         let closure = ManagedState::pack_closure::<_, _, _, MSG>(f, id, filter);
-        let topic = Topic::custom::<MSG>();
+        let topic = Topic::message::<MSG>();
         nut.push_closure(topic, id, closure);
     });
 }
@@ -92,7 +92,7 @@ where
     NUT.with(|nut| {
         let mut nut = nut.borrow_mut();
         let closure = ManagedState::pack_domained_closure(f, id, filter);
-        let topic = Topic::custom::<MSG>();
+        let topic = Topic::message::<MSG>();
         nut.push_closure(topic, id, closure);
     });
 }
@@ -118,7 +118,7 @@ pub(crate) fn set_active<A: Activity>(id: ActivityId<A>, active: bool) {
 pub(crate) fn write_domain<D, T>(domain: D, data: T)
 where
     D: DomainEnumeration,
-    T: std::any::Any,
+    T: core::any::Any,
 {
     NUT.with(|nut| {
         let id = DomainId::new(domain);

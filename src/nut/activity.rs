@@ -1,7 +1,7 @@
 use crate::nut::iac::{filter::SubscriptionFilter, managed_state::DomainId};
 use crate::nut::Handler;
 use crate::*;
-use std::any::Any;
+use core::any::Any;
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
