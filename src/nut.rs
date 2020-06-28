@@ -5,14 +5,14 @@ pub(crate) mod iac;
 mod test;
 
 use crate::*;
-use iac::managed_state::*;
 use core::any::Any;
+use iac::managed_state::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
 thread_local!(static NUT: RefCell<Nut> = RefCell::new(Nut::new()));
 
-/// The ActivityManager
+/// A nut stores thread-local state and provides an easy interface to access it.
 #[derive(Default)]
 struct Nut {
     activities: ActivityContainer,
@@ -63,7 +63,20 @@ where
 {
     NUT.with(|nut| {
         let mut nut = nut.borrow_mut();
-        let closure = ManagedState::pack_closure::<_, _, _, MSG>(f, id, filter);
+        let closure = ManagedState::pack_closure::<_, _, MSG>(f, id, filter);
+        let topic = Topic::message::<MSG>();
+        nut.push_closure(topic, id, closure);
+    });
+}
+pub(crate) fn register_mut<A, F, MSG>(id: ActivityId<A>, f: F, filter: SubscriptionFilter)
+where
+    A: Activity,
+    F: Fn(&mut A, &mut MSG) + 'static,
+    MSG: Any,
+{
+    NUT.with(|nut| {
+        let mut nut = nut.borrow_mut();
+        let closure = ManagedState::pack_closure_mut::<_, _, MSG>(f, id, filter);
         let topic = Topic::message::<MSG>();
         nut.push_closure(topic, id, closure);
     });
@@ -78,7 +91,7 @@ where
     NUT.with(|nut| {
         let mut nut = nut.borrow_mut();
         let closure =
-            ManagedState::pack_closure::<_, _, _, ()>(move |a, ()| f(a), id, Default::default());
+            ManagedState::pack_closure::<_, _, ()>(move |a, ()| f(a), id, Default::default());
         nut.push_closure(topic, id, closure);
     });
 }
@@ -93,6 +106,33 @@ where
         let mut nut = nut.borrow_mut();
         let closure = ManagedState::pack_domained_closure(f, id, filter);
         let topic = Topic::message::<MSG>();
+        nut.push_closure(topic, id, closure);
+    });
+}
+pub(crate) fn register_domained_mut<A, F, MSG>(id: ActivityId<A>, f: F, filter: SubscriptionFilter)
+where
+    A: Activity,
+    F: Fn(&mut A, &mut DomainState, &mut MSG) + 'static,
+    MSG: Any,
+{
+    NUT.with(|nut| {
+        let mut nut = nut.borrow_mut();
+        let closure = ManagedState::pack_domained_closure_mut(f, id, filter);
+        let topic = Topic::message::<MSG>();
+        nut.push_closure(topic, id, closure);
+    });
+}
+
+/// For subscriptions without payload but with domain access
+pub(crate) fn register_domained_no_payload<A, F>(id: ActivityId<A>, f: F, topic: Topic)
+where
+    A: Activity,
+    F: Fn(&mut A, &mut DomainState) + 'static,
+{
+    NUT.with(|nut| {
+        let mut nut = nut.borrow_mut();
+        let closure =
+            ManagedState::pack_domained_closure(move |a, d, ()| f(a, d), id, Default::default());
         nut.push_closure(topic, id, closure);
     });
 }

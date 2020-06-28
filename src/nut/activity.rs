@@ -46,12 +46,26 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register_no_payload(*self, f, Topic::enter())
     }
+    /// Same as `on_enter` but with domain access in closure
+    pub fn on_enter_domained<F>(&self, f: F)
+    where
+        F: Fn(&mut A, &mut DomainState) + 'static,
+    {
+        crate::nut::register_domained_no_payload(*self, f, Topic::enter())
+    }
     /// Registers a callback closure that is called when an activity changes from active to inactive.
     pub fn on_leave<F>(&self, f: F)
     where
         F: Fn(&mut A) + 'static,
     {
         crate::nut::register_no_payload(*self, f, Topic::leave())
+    }
+    /// Same as `on_leave` but with domain access in closure
+    pub fn on_leave_domained<F>(&self, f: F)
+    where
+        F: Fn(&mut A, &mut DomainState) + 'static,
+    {
+        crate::nut::register_domained_no_payload(*self, f, Topic::leave())
     }
     /// Registers a callback closure on an activity with a specific topic to listen to.
     ///
@@ -63,6 +77,13 @@ impl<A: Activity> ActivityId<A> {
         MSG: Any,
     {
         crate::nut::register(*self, f, Default::default())
+    }
+    pub fn subscribe_mut<F, MSG>(&self, f: F)
+    where
+        F: Fn(&mut A, &mut MSG) + 'static,
+        MSG: Any,
+    {
+        crate::nut::register_mut(*self, f, Default::default())
     }
 
     /// Registers a callback closure on an activity with a specific topic to listen to.
@@ -80,6 +101,13 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register_domained(*self, f, Default::default())
     }
+    pub fn subscribe_domained_mut<F, MSG>(&self, f: F)
+    where
+        F: Fn(&mut A, &mut DomainState, &mut MSG) + 'static,
+        MSG: Any,
+    {
+        crate::nut::register_domained_mut(*self, f, Default::default())
+    }
 
     /// Registers a callback closure on an activity with a specific topic to listen to with filtering options.
     pub fn subscribe_masked<F, MSG>(&self, mask: SubscriptionFilter, f: F)
@@ -88,6 +116,13 @@ impl<A: Activity> ActivityId<A> {
         MSG: Any,
     {
         crate::nut::register(*self, f, mask)
+    }
+    pub fn subscribe_masked_mut<F, MSG>(&self, mask: SubscriptionFilter, f: F)
+    where
+        F: Fn(&mut A, &mut MSG) + 'static,
+        MSG: Any,
+    {
+        crate::nut::register_mut(*self, f, mask)
     }
 
     /// Registers a callback closure on an activity with a specific topic to listen to with filtering options.
@@ -101,6 +136,13 @@ impl<A: Activity> ActivityId<A> {
         MSG: Any,
     {
         crate::nut::register_domained(*self, f, mask)
+    }
+    pub fn subscribe_domained_masked_mut<F, MSG>(&self, mask: SubscriptionFilter, f: F)
+    where
+        F: Fn(&mut A, &mut DomainState, &mut MSG) + 'static,
+        MSG: Any,
+    {
+        crate::nut::register_domained_mut(*self, f, mask)
     }
 }
 
