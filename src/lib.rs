@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 mod nut;
 
 pub use crate::nut::iac::managed_state::{DomainEnumeration, DomainState};
@@ -35,16 +37,24 @@ where
 }
 
 /// Puts the data object to the domain, which can be accessed by all associated activities.
+/// 
+/// This function is only valid outside of activities.
+/// Inside activities, only access domains through the handlers borrowed access.
+/// Typically, this is only used for initialization.
 pub fn store_to_domain<D, T>(domain: D, data: T)
 where
     D: DomainEnumeration,
     T: core::any::Any,
 {
-    nut::write_domain(domain, data)
+    nut::write_domain(domain, data).expect("You cannot use `store_to_domain` after initialization.")
 }
 
 pub fn publish<A: Any>(a: A) {
     nut::publish_custom(a)
+}
+
+pub fn publish_mut<A: Any>(a: &mut A) {
+    nut::publish_custom_mut(a)
 }
 
 /// Changes the active status of an activity.

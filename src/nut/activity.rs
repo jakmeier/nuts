@@ -10,9 +10,14 @@ impl<T: Any> Activity for T {}
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct ActivityId<A> {
-    pub(crate) index: usize,
+    pub(crate) id: UncheckedActivityId,
     pub(crate) domain_index: DomainId,
     phantom: std::marker::PhantomData<A>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+pub struct UncheckedActivityId {
+    index: usize,
 }
 
 /// A collection of heterogenous Activities
@@ -34,7 +39,7 @@ pub(crate) struct ActivityHandlerContainer {
 impl<A: Activity> ActivityId<A> {
     pub(crate) fn new(index: usize, domain_index: DomainId) -> Self {
         Self {
-            index,
+            id: UncheckedActivityId { index },
             domain_index,
             phantom: Default::default(),
         }
@@ -159,17 +164,17 @@ impl ActivityContainer {
         ActivityId::new(i, domain)
     }
     pub(crate) fn is_active<A: Activity>(&self, id: ActivityId<A>) -> bool {
-        self.active[id.index]
+        self.active[id.id.index]
     }
     pub(crate) fn set_active<A: Activity>(&mut self, id: ActivityId<A>, active: bool) {
-        self.active[id.index] = active
+        self.active[id.id.index] = active
     }
 }
 
 impl<A: Activity> Index<ActivityId<A>> for ActivityContainer {
     type Output = dyn Any;
     fn index(&self, id: ActivityId<A>) -> &Self::Output {
-        self.data[id.index]
+        self.data[id.id.index]
             .as_ref()
             .expect("Missing activity")
             .as_ref()
@@ -177,7 +182,7 @@ impl<A: Activity> Index<ActivityId<A>> for ActivityContainer {
 }
 impl<A: Activity> IndexMut<ActivityId<A>> for ActivityContainer {
     fn index_mut(&mut self, id: ActivityId<A>) -> &mut Self::Output {
-        self.data[id.index]
+        self.data[id.id.index]
             .as_mut()
             .expect("Missing activity")
             .as_mut()
@@ -188,19 +193,19 @@ impl ActivityHandlerContainer {
     pub fn iter(&self) -> impl Iterator<Item = &Handler> {
         self.data.values().flat_map(|f| f.iter())
     }
-    pub fn iter_for<A: Activity>(&self, id: ActivityId<A>) -> impl Iterator<Item = &Handler> {
+    pub fn iter_for(&self, id: UncheckedActivityId) -> impl Iterator<Item = &Handler> {
         self.data.get(&id.index).into_iter().flat_map(|f| f.iter())
     }
 }
 impl<A: Activity> Index<ActivityId<A>> for ActivityHandlerContainer {
     type Output = Vec<Handler>;
     fn index(&self, id: ActivityId<A>) -> &Self::Output {
-        &self.data[&id.index]
+        &self.data[&id.id.index]
     }
 }
 impl<A: Activity> IndexMut<ActivityId<A>> for ActivityHandlerContainer {
     fn index_mut(&mut self, id: ActivityId<A>) -> &mut Self::Output {
-        self.data.entry(id.index).or_insert(Default::default())
+        self.data.entry(id.id.index).or_insert(Default::default())
     }
 }
 

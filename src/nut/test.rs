@@ -125,3 +125,22 @@ fn message_passing() {
     crate::publish(TestMessage(100));
     assert_eq!(counter.get(), 126);
 }
+
+
+#[test]
+fn publish_inside_publish() {
+    const LAYERS: u32 = 5;
+
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let id = crate::new_activity(a, true);
+    id.subscribe(|activity, _msg: &TestUpdateMsg| {
+        if activity.counter.get() < LAYERS {
+            activity.inc(1);
+            crate::publish(TestUpdateMsg);
+        }
+    });
+    crate::publish(TestUpdateMsg);
+
+    assert_eq!(LAYERS, counter.get());
+}

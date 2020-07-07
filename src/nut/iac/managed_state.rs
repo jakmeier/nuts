@@ -32,10 +32,10 @@ impl ManagedState {
             }
         }
     }
-    pub(crate) fn push_broadcast<MSG: Any>(&mut self, msg: MSG) {
-        self.broadcast = Some(Box::new(msg));
+    pub(crate) fn set_broadcast(&mut self, msg: Box<dyn Any>) {
+        self.broadcast = Some(msg);
     }
-    pub(crate) fn end_current_broadcast(&mut self) {
+    pub(crate) fn clear_broadcast(&mut self) {
         self.broadcast = None;
     }
     /// panics if runtime broadcast is not of static type A
