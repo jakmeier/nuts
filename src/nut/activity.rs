@@ -1,3 +1,7 @@
+mod lifecycle;
+
+pub(crate) use lifecycle::*;
+
 use crate::nut::iac::{filter::SubscriptionFilter, managed_state::DomainId};
 use crate::nut::Handler;
 use crate::*;
@@ -49,28 +53,38 @@ impl<A: Activity> ActivityId<A> {
     where
         F: Fn(&mut A) + 'static,
     {
-        crate::nut::register_no_payload(*self, f, Topic::enter())
+        crate::nut::register_no_payload(*self, f, Topic::enter(), SubscriptionFilter::no_filter())
     }
     /// Same as `on_enter` but with domain access in closure
     pub fn on_enter_domained<F>(&self, f: F)
     where
         F: Fn(&mut A, &mut DomainState) + 'static,
     {
-        crate::nut::register_domained_no_payload(*self, f, Topic::enter())
+        crate::nut::register_domained_no_payload(
+            *self,
+            f,
+            Topic::enter(),
+            SubscriptionFilter::no_filter(),
+        )
     }
     /// Registers a callback closure that is called when an activity changes from active to inactive.
     pub fn on_leave<F>(&self, f: F)
     where
         F: Fn(&mut A) + 'static,
     {
-        crate::nut::register_no_payload(*self, f, Topic::leave())
+        crate::nut::register_no_payload(*self, f, Topic::leave(), SubscriptionFilter::no_filter())
     }
     /// Same as `on_leave` but with domain access in closure
     pub fn on_leave_domained<F>(&self, f: F)
     where
         F: Fn(&mut A, &mut DomainState) + 'static,
     {
-        crate::nut::register_domained_no_payload(*self, f, Topic::leave())
+        crate::nut::register_domained_no_payload(
+            *self,
+            f,
+            Topic::leave(),
+            SubscriptionFilter::no_filter(),
+        )
     }
     /// Registers a callback closure on an activity with a specific topic to listen to.
     ///
@@ -162,12 +176,6 @@ impl ActivityContainer {
         self.data.push(Some(Box::new(a)));
         self.active.push(start_active);
         ActivityId::new(i, domain)
-    }
-    pub(crate) fn is_active<A: Activity>(&self, id: ActivityId<A>) -> bool {
-        self.active[id.id.index]
-    }
-    pub(crate) fn set_active<A: Activity>(&mut self, id: ActivityId<A>, active: bool) {
-        self.active[id.id.index] = active
     }
 }
 

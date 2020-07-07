@@ -144,3 +144,18 @@ fn publish_inside_publish() {
 
     assert_eq!(LAYERS, counter.get());
 }
+
+#[test]
+fn set_active_inside_publish() {
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let id = crate::new_activity(a, true);
+    id.subscribe(move |activity, _msg: &TestUpdateMsg| {
+        activity.inc(1);
+        crate::set_active(id, false);
+    });
+    crate::publish(TestUpdateMsg);
+    crate::publish(TestUpdateMsg);
+    crate::publish(TestUpdateMsg);
+    assert_eq!(1, counter.get());
+}

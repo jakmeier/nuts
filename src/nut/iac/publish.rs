@@ -1,4 +1,3 @@
-pub mod fifo;
 pub(crate) use broadcast::BroadcastInfo;
 
 mod broadcast;
@@ -8,20 +7,20 @@ use crate::*;
 use core::any::Any;
 
 impl Nut {
-    pub(crate) fn publish_local<A: Activity, MSG: Any>(
+    pub(crate) fn publish_local<MSG: Any>(
         &self,
-        id: ActivityId<A>,
+        id: UncheckedActivityId,
         topic: Topic,
         msg: MSG,
     ) {
         let broadcast = BroadcastInfo::local(msg, id, topic);
-        self.deferred_broadcasts.push(broadcast);
-        self.broadcast();
+        self.deferred_events.push(broadcast.into());
+        self.catch_up_deferred_to_quiescence();
     }
     pub(crate) fn publish<MSG: Any>(&self, msg: MSG) {
         let broadcast = BroadcastInfo::global(msg, Topic::message::<MSG>());
-        self.deferred_broadcasts.push(broadcast);
-        self.broadcast();
+        self.deferred_events.push(broadcast.into());
+        self.catch_up_deferred_to_quiescence();
     }
     pub(crate) fn publish_mut<MSG: Any>(&self, _a: &mut MSG) {
         unimplemented!()

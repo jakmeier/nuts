@@ -4,16 +4,17 @@
 //! library developers as well as users if they want to understand more how this library works.
 
 pub(crate) mod activity;
+pub(crate) mod exec;
 pub(crate) mod iac;
 
 #[cfg(test)]
 mod test;
 
-use core::sync::atomic::AtomicBool;
-use crate::nut::iac::publish::BroadcastInfo;
+use crate::nut::exec::Deferred;
 use crate::*;
 use core::any::Any;
-use iac::publish::fifo::ThreadLocalFifo;
+use core::sync::atomic::AtomicBool;
+use exec::fifo::ThreadLocalFifo;
 use iac::managed_state::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -39,11 +40,11 @@ struct Nut {
     /// Read-only access afterwards.
     /// (This restriction might change in the future)
     subscriptions: RefCell<HashMap<Topic, ActivityHandlerContainer>>,
-    /// FIFO queue for published messages.
+    /// FIFO queue for published messages and other events that cannot be processed immediately.
     /// Atomically accessed mutably between closure dispatches.
-    deferred_broadcasts: ThreadLocalFifo<BroadcastInfo>,
+    deferred_events: ThreadLocalFifo<Deferred>,
     /// A flag that marks if a broadcast is currently on-going
-    broadcasting: AtomicBool,
+    executing: AtomicBool,
 }
 
 /// A method that can be called by the ActivityManager.
@@ -119,14 +120,17 @@ where
 }
 
 /// For subscriptions without payload
-pub(crate) fn register_no_payload<A, F>(id: ActivityId<A>, f: F, topic: Topic)
-where
+pub(crate) fn register_no_payload<A, F>(
+    id: ActivityId<A>,
+    f: F,
+    topic: Topic,
+    filter: SubscriptionFilter,
+) where
     A: Activity,
     F: Fn(&mut A) + 'static,
 {
     NUT.with(|nut| {
-        let closure =
-            ManagedState::pack_closure::<_, _, ()>(move |a, ()| f(a), id, Default::default());
+        let closure = ManagedState::pack_closure::<_, _, ()>(move |a, ()| f(a), id, filter);
         nut.push_closure(topic, id, closure);
     });
 }
@@ -157,37 +161,23 @@ where
 }
 
 /// For subscriptions without payload but with domain access
-pub(crate) fn register_domained_no_payload<A, F>(id: ActivityId<A>, f: F, topic: Topic)
-where
+pub(crate) fn register_domained_no_payload<A, F>(
+    id: ActivityId<A>,
+    f: F,
+    topic: Topic,
+    filter: SubscriptionFilter,
+) where
     A: Activity,
     F: Fn(&mut A, &mut DomainState) + 'static,
 {
     NUT.with(|nut| {
-        let closure =
-            ManagedState::pack_domained_closure(move |a, d, ()| f(a, d), id, Default::default());
+        let closure = ManagedState::pack_domained_closure(move |a, d, ()| f(a, d), id, filter);
         nut.push_closure(topic, id, closure);
     });
 }
 
 pub(crate) fn set_active<A: Activity>(id: ActivityId<A>, active: bool) {
-    // FIXME!!! What happens if activities deactivate themselves, for (a simple) example?
-    NUT.with(|nut| {
-        let before = nut
-            .activities
-            .try_borrow()
-            .expect("Bug: This should not be possible to trigger from outside the library.")
-            .is_active(id);
-        if before != active {
-            // Needs to be called before setting active, otherwise the active filter would mask the call
-            if !active {
-                nut.publish_local(id, Topic::leave(), ());
-            }
-            nut.activities.try_borrow_mut().expect("TODO").set_active(id, active);
-            if active {
-                nut.publish_local(id, Topic::enter(), ());
-            }
-        }
-    });
+    NUT.with(|nut| nut.set_active(id, active));
 }
 
 pub(crate) fn write_domain<D, T>(domain: D, data: T) -> Result<(), std::cell::BorrowMutError>

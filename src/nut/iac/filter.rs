@@ -12,6 +12,12 @@ impl Default for SubscriptionFilter {
     }
 }
 
+impl SubscriptionFilter {
+    pub fn no_filter() -> Self {
+        Self { active_only: false }
+    }
+}
+
 impl ActivityContainer {
     /// Returns true if the call should go through (false if it should be filtered out)
     pub(crate) fn filter<A: Activity>(
@@ -19,6 +25,6 @@ impl ActivityContainer {
         id: ActivityId<A>,
         filter: &SubscriptionFilter,
     ) -> bool {
-        !filter.active_only || self.is_active(id)
+        !filter.active_only || self.is_active(id.id)
     }
 }
