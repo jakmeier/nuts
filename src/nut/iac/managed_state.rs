@@ -59,6 +59,29 @@ impl ManagedState {
         let domain = &mut self.domains[i];
         (msg, domain)
     }
+    fn take_current_broadcast<A: Any>(&mut self) -> Box<A> {
+        let msg = self
+            .broadcast
+            .take()
+            .expect("Bug: nothing broadcasted")
+            .downcast()
+            .expect("Bug: wrong message broadcasted");
+        msg
+    }
+    fn take_current_broadcast_and_borrow_domain<A: Any>(
+        &mut self,
+        id: DomainId,
+    ) -> (Box<A>, &mut DomainState) {
+        let msg = self
+            .broadcast
+            .take()
+            .expect("Bug: nothing broadcasted")
+            .downcast()
+            .expect("Bug: wrong message broadcasted");
+        let i = id.index().expect("Activity has no domain");
+        let domain = &mut self.domains[i];
+        (msg, domain)
+    }
 
     pub(crate) fn pack_closure<A, F, MSG>(
         f: F,
@@ -100,6 +123,28 @@ impl ManagedState {
                         .expect("Wrong activity"); // deleted and replaced?
                     let msg = managed_state.current_broadcast();
                     f(a, msg)
+                }
+            },
+        )
+    }
+    pub(crate) fn pack_closure_owned<A, F, MSG>(
+        f: F,
+        index: ActivityId<A>,
+        filter: SubscriptionFilter,
+    ) -> Handler
+    where
+        A: Activity,
+        F: Fn(&mut A, MSG) + 'static,
+        MSG: Any,
+    {
+        Box::new(
+            move |activities: &mut ActivityContainer, managed_state: &mut ManagedState| {
+                if activities.filter(index, &filter) {
+                    let a = activities[index]
+                        .downcast_mut::<A>()
+                        .expect("Wrong activity"); // deleted and replaced?
+                    let msg = managed_state.take_current_broadcast();
+                    f(a, *msg)
                 }
             },
         )
@@ -146,6 +191,29 @@ impl ManagedState {
                     let (msg, domain) =
                         managed_state.current_broadcast_and_domain(index.domain_index);
                     f(a, domain, msg)
+                }
+            },
+        )
+    }
+    pub(crate) fn pack_domained_closure_owned<A, F, MSG>(
+        f: F,
+        index: ActivityId<A>,
+        filter: SubscriptionFilter,
+    ) -> Handler
+    where
+        A: Activity,
+        F: Fn(&mut A, &mut DomainState, MSG) + 'static,
+        MSG: Any,
+    {
+        Box::new(
+            move |activities: &mut ActivityContainer, managed_state: &mut ManagedState| {
+                if activities.filter(index, &filter) {
+                    let a = activities[index]
+                        .downcast_mut::<A>()
+                        .expect("Wrong activity"); // deleted and replaced?
+                    let (msg, domain) =
+                        managed_state.take_current_broadcast_and_borrow_domain(index.domain_index);
+                    f(a, domain, *msg)
                 }
             },
         )

@@ -90,10 +90,6 @@ pub(crate) fn publish_custom<A: Any>(a: A) {
     NUT.with(|nut| nut.publish(a))
 }
 
-pub(crate) fn publish_custom_mut<A: Any>(a: &mut A) {
-    NUT.with(|nut| nut.publish_mut(a))
-}
-
 pub(crate) fn register<A, F, MSG>(id: ActivityId<A>, f: F, filter: SubscriptionFilter)
 where
     A: Activity,
@@ -114,6 +110,18 @@ where
 {
     NUT.with(|nut| {
         let closure = ManagedState::pack_closure_mut::<_, _, MSG>(f, id, filter);
+        let topic = Topic::message::<MSG>();
+        nut.push_closure(topic, id, closure);
+    });
+}
+pub(crate) fn register_owned<A, F, MSG>(id: ActivityId<A>, f: F, filter: SubscriptionFilter)
+where
+    A: Activity,
+    F: Fn(&mut A, MSG) + 'static,
+    MSG: Any,
+{
+    NUT.with(|nut| {
+        let closure = ManagedState::pack_closure_owned::<_, _, MSG>(f, id, filter);
         let topic = Topic::message::<MSG>();
         nut.push_closure(topic, id, closure);
     });
@@ -159,6 +167,21 @@ where
         nut.push_closure(topic, id, closure);
     });
 }
+pub(crate) fn register_domained_owned<A, F, MSG>(
+    id: ActivityId<A>,
+    f: F,
+    filter: SubscriptionFilter,
+) where
+    A: Activity,
+    F: Fn(&mut A, &mut DomainState, MSG) + 'static,
+    MSG: Any,
+{
+    NUT.with(|nut| {
+        let closure = ManagedState::pack_domained_closure_owned(f, id, filter);
+        let topic = Topic::message::<MSG>();
+        nut.push_closure(topic, id, closure);
+    });
+}
 
 /// For subscriptions without payload but with domain access
 pub(crate) fn register_domained_no_payload<A, F>(
@@ -176,7 +199,7 @@ pub(crate) fn register_domained_no_payload<A, F>(
     });
 }
 
-pub(crate) fn set_active<A: Activity>(id: ActivityId<A>, active: bool) {
+pub(crate) fn set_active(id: UncheckedActivityId, active: bool) {
     NUT.with(|nut| nut.set_active(id, active));
 }
 

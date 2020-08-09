@@ -16,9 +16,9 @@ impl ActivityContainer {
 }
 
 impl Nut {
-    pub(crate) fn set_active<A: Activity>(&self, id: ActivityId<A>, is_active: bool) {
+    pub(crate) fn set_active(&self, id: UncheckedActivityId, is_active: bool) {
         let event = LifecycleChange {
-            activity: id.id,
+            activity: id,
             is_active,
         };
         self.deferred_events.push(event.into());

@@ -126,7 +126,6 @@ fn message_passing() {
     assert_eq!(counter.get(), 126);
 }
 
-
 #[test]
 fn publish_inside_publish() {
     const LAYERS: u32 = 5;
@@ -158,4 +157,32 @@ fn set_active_inside_publish() {
     crate::publish(TestUpdateMsg);
     crate::publish(TestUpdateMsg);
     assert_eq!(1, counter.get());
+}
+
+struct TestMessageNoClone;
+#[test]
+fn owned_message() {
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let id = crate::new_activity(a, true);
+    id.subscribe_owned(|activity, _msg: TestMessageNoClone| {
+        activity.inc(1);
+    });
+    crate::publish(TestMessageNoClone);
+    assert_eq!(1, counter.get()); // Make sure subscription has been called
+}
+#[test]
+fn owned_domained_message() {
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let d = TestDomains::DomainA;
+    crate::store_to_domain(d, 7usize);
+    let id = crate::new_domained_activity(a, d, true);
+    id.subscribe_domained_owned(|activity, domain, _msg: TestMessageNoClone| {
+        let x: usize = *domain.get();
+        assert_eq!(7, x);
+        activity.inc(1);
+    });
+    crate::publish(TestMessageNoClone);
+    assert_eq!(1, counter.get()); // Make sure subscription has been called
 }

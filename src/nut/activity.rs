@@ -13,6 +13,8 @@ pub trait Activity: Any {}
 impl<T: Any> Activity for T {}
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+/// Pointer to an activity that has been registered, with a type parameter to track the activity's type.
+/// Can be used to add type-checked closures to the activity.
 pub struct ActivityId<A> {
     pub(crate) id: UncheckedActivityId,
     pub(crate) domain_index: DomainId,
@@ -20,6 +22,11 @@ pub struct ActivityId<A> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+/// Pointer to an activity that has been registered.
+/// Can be used to activate / deactivate activities.
+///
+/// The information about the activity's type is lost at this point.
+/// Therefore, this id cannot be used to register closures.
 pub struct UncheckedActivityId {
     index: usize,
 }
@@ -104,6 +111,16 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register_mut(*self, f, Default::default())
     }
+    /// Registers a callback closure on an activity with a specific topic to listen to.
+    /// This variant takes ownership of the message.
+    /// Only subscription per type is allowed. Othwerise, a pnic will occur when publishing.
+    pub fn subscribe_owned<F, MSG>(&self, f: F)
+    where
+        F: Fn(&mut A, MSG) + 'static,
+        MSG: Any,
+    {
+        crate::nut::register_owned(*self, f, Default::default())
+    }
 
     /// Registers a callback closure on an activity with a specific topic to listen to.
     /// Has mutable access to the DomainState object.
@@ -126,6 +143,16 @@ impl<A: Activity> ActivityId<A> {
         MSG: Any,
     {
         crate::nut::register_domained_mut(*self, f, Default::default())
+    }
+    /// Registers a callback closure on an activity with a specific topic to listen to and access to the domain.
+    /// This variant takes ownership of the message.
+    /// Only subscription per type is allowed. Othwerise, a pnic will occur when publishing.
+    pub fn subscribe_domained_owned<F, MSG>(&self, f: F)
+    where
+        F: Fn(&mut A, &mut DomainState, MSG) + 'static,
+        MSG: Any,
+    {
+        crate::nut::register_domained_owned(*self, f, Default::default())
     }
 
     /// Registers a callback closure on an activity with a specific topic to listen to with filtering options.
@@ -221,5 +248,11 @@ impl<A> Copy for ActivityId<A> {}
 impl<A> Clone for ActivityId<A> {
     fn clone(&self) -> Self {
         *self
+    }
+}
+
+impl<A> Into<UncheckedActivityId> for ActivityId<A> {
+    fn into(self) -> UncheckedActivityId {
+        self.id
     }
 }

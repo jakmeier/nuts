@@ -37,7 +37,7 @@ where
 }
 
 /// Puts the data object to the domain, which can be accessed by all associated activities.
-/// 
+///
 /// This function is only valid outside of activities.
 /// Inside activities, only access domains through the handlers borrowed access.
 /// Typically, this is only used for initialization.
@@ -49,16 +49,13 @@ where
     nut::write_domain(domain, data).expect("You cannot use `store_to_domain` after initialization.")
 }
 
+/// Send the message to all subscribed activities
 pub fn publish<A: Any>(a: A) {
     nut::publish_custom(a)
 }
 
-pub fn publish_mut<A: Any>(a: &mut A) {
-    nut::publish_custom_mut(a)
-}
-
 /// Changes the active status of an activity.
 /// If the status changes, the corresponding enter/leave subscriptions will be called.
-pub fn set_active<A: Activity>(id: ActivityId<A>, active: bool) {
-    nut::set_active(id, active)
+pub fn set_active(id: impl Into<UncheckedActivityId>, active: bool) {
+    nut::set_active(id.into(), active)
 }
