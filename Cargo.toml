@@ -1,5 +1,5 @@
 [package]
-name = "webnut"
+name = "nuts"
 version = "0.1.0"
 authors = ["Jakob Meier <inbox@jakobmeier.ch>"]
 edition = "2018"

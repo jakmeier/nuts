@@ -4,6 +4,7 @@ pub(crate) struct DomainId(Option<usize>);
 /// Used for mapping domain identifiers to unique integers.
 /// Can be derived with domain_enum!(TYPE);
 pub trait DomainEnumeration {
+    /// The unique integer for a specific domain
     fn id(&self) -> usize;
 }
 
@@ -25,8 +26,8 @@ impl DomainId {
 ///
 /// # Example:
 /// ```
-/// #[macro_use] extern crate webnut;
-/// use webnut::{domain_enum, DomainEnumeration};
+/// #[macro_use] extern crate nuts;
+/// use nuts::{domain_enum, DomainEnumeration};
 /// #[derive(Clone, Copy)]
 /// enum MyDomain {
 ///     DomainA,

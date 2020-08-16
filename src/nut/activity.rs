@@ -9,12 +9,22 @@ use core::any::Any;
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
+// @ START-DOC ACTIVITY
+/// Activities are at the core of Nuts.
+/// From the globally managed data, they represent the active part, i.e. they can have event listeners.
+/// The passive counter-part is defined by `DomainState`.
+///
+/// Every struct that has a type with static lifetime (anything that has no lifetime parameter that is determined only at runtime) can be used as an Activity.
+/// You don't have to implement the `Activity` trait yourself, it will always be automatically derived if possible.
+/// You only have to register the activity, using `nuts::new_activity` or one of its variants.
+///
+// @ END-DOC ACTIVITY
 pub trait Activity: Any {}
 impl<T: Any> Activity for T {}
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-/// Pointer to an activity that has been registered, with a type parameter to track the activity's type.
-/// Can be used to add type-checked closures to the activity.
+/// Handle to an `Activity` that has been registered, with a type parameter to track the activity's type.
+/// Can be used to add type-checked closures to the activity, which will be used as event listeners.
 pub struct ActivityId<A> {
     pub(crate) id: UncheckedActivityId,
     pub(crate) domain_index: DomainId,
@@ -104,6 +114,7 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register(*self, f, Default::default())
     }
+    /// Same as [subscribe](#method.subscribe) but gives mutable access to the message object.
     pub fn subscribe_mut<F, MSG>(&self, f: F)
     where
         F: Fn(&mut A, &mut MSG) + 'static,
@@ -137,6 +148,7 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register_domained(*self, f, Default::default())
     }
+    /// Same as [subscribe_domained](#method.subscribe_domained) but gives mutable access to the message object.
     pub fn subscribe_domained_mut<F, MSG>(&self, f: F)
     where
         F: Fn(&mut A, &mut DomainState, &mut MSG) + 'static,
@@ -163,6 +175,7 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register(*self, f, mask)
     }
+    /// Same as [subscribe_masked](#method.subscribe_masked) but gives mutable access to the message object.
     pub fn subscribe_masked_mut<F, MSG>(&self, mask: SubscriptionFilter, f: F)
     where
         F: Fn(&mut A, &mut MSG) + 'static,
@@ -183,6 +196,7 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register_domained(*self, f, mask)
     }
+    /// Same as [subscribe_domained_masked](#method.subscribe_domained_masked) but gives mutable access to the message object.
     pub fn subscribe_domained_masked_mut<F, MSG>(&self, mask: SubscriptionFilter, f: F)
     where
         F: Fn(&mut A, &mut DomainState, &mut MSG) + 'static,
