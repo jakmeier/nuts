@@ -71,6 +71,7 @@ fn find_snippets_in_file(
     const END_MARKER: &'static str = "// @ END-DOC";
     for (line_number, line) in BufReader::new(file).lines().enumerate() {
         let line = line?;
+        let line = line.trim();
         match state {
             SearchState::OutsideSnippet => {
                 if line.starts_with(START_MARKER) {

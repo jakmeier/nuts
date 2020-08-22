@@ -18,8 +18,8 @@ use std::ops::{Index, IndexMut};
 ///
 /// Every struct that has a type with static lifetime (anything that has no lifetime parameter that is determined only at runtime) can be used as an Activity.
 /// You don't have to implement the `Activity` trait yourself, it will always be automatically derived if possible.
-/// You only have to register the activity, using `nuts::new_activity` or one of its variants.
 ///
+/// To create an activity, simply register the object that should be used as activity, using `nuts::new_activity` or one of its variants.
 // @ END-DOC ACTIVITY
 pub trait Activity: Any {}
 impl<T: Any> Activity for T {}
@@ -35,7 +35,7 @@ pub struct ActivityId<A> {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 /// Pointer to an activity that has been registered.
-/// Can be used to activate / deactivate activities.
+/// Can be used to set the lifecycle stats of activities.
 ///
 /// The information about the activity's type is lost at this point.
 /// Therefore, this id cannot be used to register closures.
@@ -93,6 +93,45 @@ impl<A: Activity> ActivityId<A> {
     ///
     /// By default, the activity will only receive calls when it is active.
     /// Use `subscribe_masked` for more control over this behavior.
+    ///
+    /// ### Example
+    // @ START-DOC SUBSCRIBE_EXAMPLE
+    /// ```rust
+    /// struct MyActivity { id: usize };
+    /// struct MyMessage { text: String };
+    ///
+    /// pub fn main() {
+    ///     let activity = nuts::new_activity(MyActivity { id: 0 } );
+    ///     activity.subscribe(
+    ///         |activity: &mut MyActivity, message: &MyMessage|
+    ///         println!("Subscriber with ID {} received text: {}", activity.id, message.text)
+    ///     );
+    /// }
+    /// ```
+    /// In the example above, a subscription is created that waits for messages of type `MyMessage` to be published.
+    /// So far, the code inside the closure is not executed and nothing is printed to the console.
+    ///
+    /// Note that the first argument of the closure is a mutable reference to the activity object.
+    /// The second argument is a read-only reference to the published message.
+    /// Both types must match exactly or otherwise the closure will either not be accepted by the compiler.
+    ///
+    /// A function with the correct argument types can also be used to subscribe.
+    /// ```rust
+    /// struct MyActivity { id: usize };
+    /// struct MyMessage { text: String };
+    ///
+    /// pub fn main() {
+    ///     let activity = nuts::new_activity(MyActivity { id: 0 } );
+    ///     activity.subscribe(MyActivity::print_text);
+    /// }
+    ///
+    /// impl MyActivity {
+    ///     fn print_text(&mut self, message: &MyMessage) {
+    ///         println!("Subscriber with ID {} received text: {}", self.id, message.text)
+    ///     }
+    /// }
+    /// ```
+    // @ END-DOC SUBSCRIBE_EXAMPLE
     pub fn subscribe<F, MSG>(&self, f: F)
     where
         F: Fn(&mut A, &MSG) + 'static,
@@ -194,6 +233,13 @@ impl<A: Activity> ActivityId<A> {
     /// Changes the lifecycle status of the activity
     pub fn set_status(&self, status: LifecycleStatus) {
         crate::nut::set_status((*self).into(), status);
+    }
+}
+
+impl UncheckedActivityId {
+    /// Changes the lifecycle status of the activity
+    pub fn set_status(&self, status: LifecycleStatus) {
+        crate::nut::set_status(*self, status);
     }
 }
 

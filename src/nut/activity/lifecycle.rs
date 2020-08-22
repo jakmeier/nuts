@@ -2,17 +2,18 @@ use super::*;
 use crate::nut::Nut;
 
 // @ START-DOC ACTIVITY_LIFECYCLE
-/// An activity starts in an active lifecycle status.
-/// The only other status is inactive in the current version of Nuts.
+/// Each activity has a lifecycle status that can be change using [`set_status`](struct.ActivityId.html#method.set_status).
+/// It starts with `LifecycleStatus::Active`.
+/// In the current version of Nuts, the only other status is `LifecycleStatus::Inactive`.
 ///
 /// The inactive status can be used to put activities to sleep temporarily.
 /// While inactive, the activity will not be notified of events it has subscribed to.
 /// A subscription filter can been used to change this behavior.
 /// (See [`subscribe_masked`](struct.ActivityId.html#method.subscribe_masked))
 ///
-/// If the status of a changes from active to inactive, the corresponding [`on_leave`](struct.ActivityId.html#method.on_leave) and [`on_leave_domained`](struct.ActivityId.html#method.on_leave_domained) subscriptions will be called.
+/// If the status of a changes from active to inactive, the activity's [`on_leave`](struct.ActivityId.html#method.on_leave) and [`on_leave_domained`](struct.ActivityId.html#method.on_leave_domained) subscriptions will be called.
 ///
-/// If the status of a changes from inactive to active, the corresponding [`on_enter`](struct.ActivityId.html#method.on_enter) and [`on_enter_domained`](struct.ActivityId.html#method.on_enter_domained) subscriptions will be called.0
+/// If the status of a changes from inactive to active, the activity's [`on_enter`](struct.ActivityId.html#method.on_enter) and [`on_enter_domained`](struct.ActivityId.html#method.on_enter_domained) subscriptions will be called.
 ///
 // @ END-DOC ACTIVITY_LIFECYCLE
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]

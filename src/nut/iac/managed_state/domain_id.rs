@@ -25,6 +25,7 @@ impl DomainId {
 /// `DomainEnumeration` to be imported with this exact name.
 ///
 /// # Example:
+// @ START-DOC DOMAIN_MACRO_EXAMPLE
 /// ```
 /// #[macro_use] extern crate nuts;
 /// use nuts::{domain_enum, DomainEnumeration};
@@ -35,6 +36,7 @@ impl DomainId {
 /// }
 /// domain_enum!(MyDomain);
 /// ```
+// @ END-DOC DOMAIN_MACRO_EXAMPLE
 macro_rules! domain_enum {
     ( $e:tt ) => {
         impl DomainEnumeration for $e {

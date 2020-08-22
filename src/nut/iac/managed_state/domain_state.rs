@@ -4,11 +4,11 @@ use std::collections::HashMap;
 /// Stores passive data that can be accessed in event handlers of multiple activities.
 ///
 // @ START-DOC DOMAIN
-/// Domains span multiple [Activities](trait.Activity.html) and allows them to share state.
-/// Library users can define the domains using [`domain_enum!`](macro.domain_enum.html) but each activity can only join one domain.
+/// A Domain stores arbitrary data for sharing between multiple [Activities](trait.Activity.html).
+/// Library users can define the number of domains but each activity can only join one domain.
 ///
-/// If data is only used by a single activity, it is usually better to store it in the activity struct itself.
 /// Domains should only be used when data needs to be shared between multiple activities of the same or different types.
+/// If data is only used by a single activity, it is usually better to store it in the activity struct itself.
 ///
 /// For now, there is no real benefit from using multiple Domains, other than data isolation.
 /// But there are plans for the future that will schedule Activities in different threads, based on their domain.
@@ -20,7 +20,10 @@ pub struct DomainState {
 
 impl DomainState {
     /// Stores a value in the domain.
+    // @ START-DOC DOMAIN_STORE
+    /// Only one instance per type id can be stored inside a domain.
     /// If an old value of the same type already exists in the domain, it will be overwritten.
+    // @ END-DOC DOMAIN_STORE
     pub fn store<T: Any>(&mut self, obj: T) {
         self.objects.insert(TypeId::of::<T>(), Box::new(obj));
     }
