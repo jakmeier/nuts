@@ -31,7 +31,7 @@ impl Nut {
         while let Some(deferred) = self.deferred_events.pop() {
             match deferred {
                 Deferred::Broadcast(b) => self.unchecked_broadcast(b),
-                Deferred::LifecycleChange(lc) => self.unchecked_lifecycle_change(lc),
+                Deferred::LifecycleChange(lc) => self.unchecked_lifecycle_change(&lc),
             }
         }
     }

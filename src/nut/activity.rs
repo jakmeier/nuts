@@ -134,7 +134,7 @@ impl<A: Activity> ActivityId<A> {
     }
 
     /// Registers a callback closure on an activity with a specific topic to listen to.
-    /// Has mutable access to the DomainState object.
+    /// Has mutable access to the `DomainState` object.
     ///
     /// By default, the activity will only receive calls when it is active.
     /// Use `subscribe_domained_masked` for more control over this behavior.
@@ -148,7 +148,7 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register_domained(*self, f, Default::default())
     }
-    /// Same as [subscribe_domained](#method.subscribe_domained) but gives mutable access to the message object.
+    /// Same as [`subscribe_domained`](#method.subscribe_domained) but gives mutable access to the message object.
     pub fn subscribe_domained_mut<F, MSG>(&self, f: F)
     where
         F: Fn(&mut A, &mut DomainState, &mut MSG) + 'static,
@@ -158,7 +158,7 @@ impl<A: Activity> ActivityId<A> {
     }
     /// Registers a callback closure on an activity with a specific topic to listen to and access to the domain.
     /// This variant takes ownership of the message.
-    /// Only subscription per type is allowed. Othwerise, a pnic will occur when publishing.
+    /// Only subscription per type is allowed. Otherwise, a panic will occur when publishing.
     pub fn subscribe_domained_owned<F, MSG>(&self, f: F)
     where
         F: Fn(&mut A, &mut DomainState, MSG) + 'static,
@@ -175,7 +175,7 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register(*self, f, mask)
     }
-    /// Same as [subscribe_masked](#method.subscribe_masked) but gives mutable access to the message object.
+    /// Same as [`subscribe_masked`](#method.subscribe_masked) but gives mutable access to the message object.
     pub fn subscribe_masked_mut<F, MSG>(&self, mask: SubscriptionFilter, f: F)
     where
         F: Fn(&mut A, &mut MSG) + 'static,
@@ -185,7 +185,7 @@ impl<A: Activity> ActivityId<A> {
     }
 
     /// Registers a callback closure on an activity with a specific topic to listen to with filtering options.
-    /// Has mutable access to the DomainState object.
+    /// Has mutable access to the `DomainState` object.
     ///
     /// # Panics
     /// Panics if the activity has not been registered with a domain.
@@ -196,7 +196,7 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register_domained(*self, f, mask)
     }
-    /// Same as [subscribe_domained_masked](#method.subscribe_domained_masked) but gives mutable access to the message object.
+    /// Same as [`subscribe_domained_masked`](#method.subscribe_domained_masked) but gives mutable access to the message object.
     pub fn subscribe_domained_masked_mut<F, MSG>(&self, mask: SubscriptionFilter, f: F)
     where
         F: Fn(&mut A, &mut DomainState, &mut MSG) + 'static,
@@ -254,7 +254,9 @@ impl<A: Activity> Index<ActivityId<A>> for ActivityHandlerContainer {
 }
 impl<A: Activity> IndexMut<ActivityId<A>> for ActivityHandlerContainer {
     fn index_mut(&mut self, id: ActivityId<A>) -> &mut Self::Output {
-        self.data.entry(id.id.index).or_insert(Default::default())
+        self.data
+            .entry(id.id.index)
+            .or_insert_with(Default::default)
     }
 }
 

@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 /// No mutable access required for those operation.
 ///
 /// Note that the chosen limitation prevents an implementation of Iterator for
-/// this collection. IntoIterator would be possible but is mostly useless.
+/// this collection. `IntoIterator` would be possible but is mostly useless.
 pub(crate) struct ThreadLocalFifo<ITEM> {
     fifo: RefCell<VecDeque<ITEM>>,
 }

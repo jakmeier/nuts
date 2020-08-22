@@ -2,14 +2,14 @@
 pub(crate) struct DomainId(Option<usize>);
 
 /// Used for mapping domain identifiers to unique integers.
-/// Can be derived with domain_enum!(TYPE);
+/// Can be derived with `domain_enum!(TYPE)`;
 pub trait DomainEnumeration {
     /// The unique integer for a specific domain
     fn id(&self) -> usize;
 }
 
 impl DomainId {
-    pub(crate) fn new(d: impl DomainEnumeration) -> DomainId {
+    pub(crate) fn new(d: &impl DomainEnumeration) -> DomainId {
         DomainId(Some(d.id()))
     }
     pub(crate) fn index(&self) -> Option<usize> {

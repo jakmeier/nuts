@@ -47,7 +47,7 @@ struct Nut {
     executing: AtomicBool,
 }
 
-/// A method that can be called by the ActivityManager.
+/// A method that can be called by the `ActivityManager`.
 /// These handlers are created by the library and not part of the public interface.
 type Handler = Box<dyn Fn(&mut ActivityContainer, &mut ManagedState)>;
 
@@ -203,7 +203,7 @@ pub(crate) fn set_active(id: UncheckedActivityId, active: bool) {
     NUT.with(|nut| nut.set_active(id, active));
 }
 
-pub(crate) fn write_domain<D, T>(domain: D, data: T) -> Result<(), std::cell::BorrowMutError>
+pub(crate) fn write_domain<D, T>(domain: &D, data: T) -> Result<(), std::cell::BorrowMutError>
 where
     D: DomainEnumeration,
     T: core::any::Any,

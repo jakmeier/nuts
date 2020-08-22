@@ -34,10 +34,10 @@ You only have to register the activity, using `nuts::new_activity` or one of its
 
 `nuts::new_activity(...)` is the simplest method to create a new activity.
 It takes two arguments:
- 1)  **activity**: The activity struct instance, can be any object or primitive
- 2) **start_active**: boolean value to define initial state of Activity (ACTIVE/INACTIVE)
+ 1) `activity`: The activity struct instance, can be any object or primitive
+ 2) `start_active`: boolean value to define initial state of Activity (ACTIVE/INACTIVE)
 
-An ActivityId is returned, which is a handle to the newly registered activity.
+An `ActivityId` is returned, which is a handle to the newly registered activity.
 Use it to register callbacks on the activity.
 
 # Example:
@@ -78,7 +78,7 @@ TODO
 ## Domains
 
 Domains span multiple [Activities](trait.Activity.html) and allows them to share state.
-Library users can define the domains using [domain_enum!](macro.domain_enum.html) but each activity can only join one domain.
+Library users can define the domains using [`domain_enum!`](macro.domain_enum.html) but each activity can only join one domain.
 
 If data is only used by a single activity, it is usually better to store it in the activity struct itself.
 Domains should only be used when data needs to be shared between multiple activities of the same or different types.

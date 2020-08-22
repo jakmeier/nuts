@@ -95,8 +95,8 @@ fn enter_leave() {
 fn domained_activity() {
     let a = TestActivity::new();
     let d = TestDomains::DomainA;
-    crate::store_to_domain(d, 7usize);
-    let id = crate::new_domained_activity(a, d, true);
+    crate::store_to_domain(&d, 7usize);
+    let id = crate::new_domained_activity(a, &d, true);
     id.subscribe_domained(|_activity, domain, _msg: &TestUpdateMsg| {
         let x: usize = *domain.get();
         assert_eq!(7, x);
@@ -176,8 +176,8 @@ fn owned_domained_message() {
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();
     let d = TestDomains::DomainA;
-    crate::store_to_domain(d, 7usize);
-    let id = crate::new_domained_activity(a, d, true);
+    crate::store_to_domain(&d, 7usize);
+    let id = crate::new_domained_activity(a, &d, true);
     id.subscribe_domained_owned(|activity, domain, _msg: TestMessageNoClone| {
         let x: usize = *domain.get();
         assert_eq!(7, x);

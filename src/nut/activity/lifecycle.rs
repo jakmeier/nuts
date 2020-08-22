@@ -25,7 +25,7 @@ impl Nut {
         self.catch_up_deferred_to_quiescence();
     }
     /// only access after locking with executing flag
-    pub(crate) fn unchecked_lifecycle_change(&self, lifecycle_change: LifecycleChange) {
+    pub(crate) fn unchecked_lifecycle_change(&self, lifecycle_change: &LifecycleChange) {
         let before = self
             .activities
             .try_borrow()

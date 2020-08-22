@@ -18,8 +18,17 @@
 //! However, Nuts has no dependencies (aside from std) and therefore can be used on other platforms, too.
 // @ END-DOC CRATE
 
+// code quality
 #![forbid(unsafe_code)]
+#![deny(clippy::mem_forget)]
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::needless_borrow)]
+#![warn(clippy::mutex_integer)]
+#![warn(clippy::needless_pass_by_value)]
+// docs
 #![warn(missing_docs)]
+#![warn(clippy::doc_markdown)]
+#![warn(clippy::missing_errors_doc)]
 
 mod nut;
 
@@ -39,10 +48,10 @@ pub struct Method<ACTIVITY>(dyn Fn(&mut ACTIVITY, Option<&mut DomainState>));
 // @ START-DOC NEW_ACTIVITY
 /// `nuts::new_activity(...)` is the simplest method to create a new activity.
 /// It takes two arguments:
-///  1)  **activity**: The activity struct instance, can be any object or primitive
-///  2) **start_active**: boolean value to define initial state of Activity (ACTIVE/INACTIVE)
+///  1) `activity`: The activity struct instance, can be any object or primitive
+///  2) `start_active`: boolean value to define initial state of Activity (ACTIVE/INACTIVE)
 ///
-/// An ActivityId is returned, which is a handle to the newly registered activity.
+/// An `ActivityId` is returned, which is a handle to the newly registered activity.
 /// Use it to register callbacks on the activity.
 ///
 /// # Example:
@@ -83,10 +92,10 @@ where
 }
 
 /// Consumes a struct that is registered as an Activity with access to the specified domain.
-/// Use the returned ActivityId to register callbacks on the activity.
+/// Use the returned `ActivityId` to register callbacks on the activity.
 ///
-/// start_active: Initial state of the activity
-pub fn new_domained_activity<A, D>(activity: A, domain: D, start_active: bool) -> ActivityId<A>
+/// `start_active`: Initial state of the activity
+pub fn new_domained_activity<A, D>(activity: A, domain: &D, start_active: bool) -> ActivityId<A>
 where
     A: Activity,
     D: DomainEnumeration,
@@ -99,7 +108,7 @@ where
 /// This function is only valid outside of activities.
 /// Inside activities, only access domains through the handlers borrowed access.
 /// Typically, this functino is only used for initialization of the domain state.
-pub fn store_to_domain<D, T>(domain: D, data: T)
+pub fn store_to_domain<D, T>(domain: &D, data: T)
 where
     D: DomainEnumeration,
     T: core::any::Any,
