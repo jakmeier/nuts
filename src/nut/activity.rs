@@ -1,6 +1,8 @@
+mod activity_container;
 mod lifecycle;
 
-pub(crate) use lifecycle::*;
+pub(crate) use activity_container::*;
+pub use lifecycle::*;
 
 use crate::nut::iac::{filter::SubscriptionFilter, managed_state::DomainId};
 use crate::nut::Handler;
@@ -39,22 +41,6 @@ pub struct ActivityId<A> {
 /// Therefore, this id cannot be used to register closures.
 pub struct UncheckedActivityId {
     index: usize,
-}
-
-/// A collection of heterogenous Activities
-///
-/// Needs stores a list of dynamic `Any` trait objects, not `Activity` because
-/// trait objects only allow access to methods of that trait, not their super-traits.  
-#[derive(Default)]
-pub(crate) struct ActivityContainer {
-    data: Vec<Option<Box<dyn Any>>>,
-    active: Vec<bool>,
-}
-
-/// Handlers stored per Activity
-#[derive(Default)]
-pub(crate) struct ActivityHandlerContainer {
-    data: HashMap<usize, Vec<Handler>>,
 }
 
 impl<A: Activity> ActivityId<A> {
@@ -204,59 +190,10 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register_domained_mut(*self, f, mask)
     }
-}
 
-impl ActivityContainer {
-    pub(crate) fn add<A: Activity>(
-        &mut self,
-        a: A,
-        domain: DomainId,
-        start_active: bool,
-    ) -> ActivityId<A> {
-        let i = self.data.len();
-        self.data.push(Some(Box::new(a)));
-        self.active.push(start_active);
-        ActivityId::new(i, domain)
-    }
-}
-
-impl<A: Activity> Index<ActivityId<A>> for ActivityContainer {
-    type Output = dyn Any;
-    fn index(&self, id: ActivityId<A>) -> &Self::Output {
-        self.data[id.id.index]
-            .as_ref()
-            .expect("Missing activity")
-            .as_ref()
-    }
-}
-impl<A: Activity> IndexMut<ActivityId<A>> for ActivityContainer {
-    fn index_mut(&mut self, id: ActivityId<A>) -> &mut Self::Output {
-        self.data[id.id.index]
-            .as_mut()
-            .expect("Missing activity")
-            .as_mut()
-    }
-}
-
-impl ActivityHandlerContainer {
-    pub fn iter(&self) -> impl Iterator<Item = &Handler> {
-        self.data.values().flat_map(|f| f.iter())
-    }
-    pub fn iter_for(&self, id: UncheckedActivityId) -> impl Iterator<Item = &Handler> {
-        self.data.get(&id.index).into_iter().flat_map(|f| f.iter())
-    }
-}
-impl<A: Activity> Index<ActivityId<A>> for ActivityHandlerContainer {
-    type Output = Vec<Handler>;
-    fn index(&self, id: ActivityId<A>) -> &Self::Output {
-        &self.data[&id.id.index]
-    }
-}
-impl<A: Activity> IndexMut<ActivityId<A>> for ActivityHandlerContainer {
-    fn index_mut(&mut self, id: ActivityId<A>) -> &mut Self::Output {
-        self.data
-            .entry(id.id.index)
-            .or_insert_with(Default::default)
+    /// Changes the lifecycle status of the activity
+    pub fn set_status(&self, status: LifecycleStatus) {
+        crate::nut::set_status((*self).into(), status);
     }
 }
 

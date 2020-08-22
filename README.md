@@ -6,7 +6,7 @@ Nuts is a library that offers a simple publish-subscribe API.
 ## Quick first example
 ```rust
 struct Activity;
-let activity = nuts::new_activity(Activity, true);
+let activity = nuts::new_activity(Activity);
 activity.subscribe(|_activity, n: &usize| println!("Subscriber received {}", n) );
 nuts::publish(17usize);
 // "Subscriber received 17" is printed
@@ -33,9 +33,8 @@ You only have to register the activity, using `nuts::new_activity` or one of its
 ### Creating a New Activity
 
 `nuts::new_activity(...)` is the simplest method to create a new activity.
-It takes two arguments:
- 1) `activity`: The activity struct instance, can be any object or primitive
- 2) `start_active`: boolean value to define initial state of Activity (ACTIVE/INACTIVE)
+It takes only a single argument, which can be any struct instance or primitive.
+This object will be the private data for the activity.
 
 An `ActivityId` is returned, which is a handle to the newly registered activity.
 Use it to register callbacks on the activity.
@@ -53,8 +52,7 @@ struct MyMessage {
 // Create activity
 let activity = MyActivity::default();
 // Activity moves into globally managed stated, ID to handle it is returned
-let start_active = true;
-let activity_id = nuts::new_activity(activity, start_active);
+let activity_id = nuts::new_activity(activity);
 
 // Add event listener that listens to published `MyMessage` types
 activity_id.subscribe(
@@ -71,7 +69,20 @@ nuts::publish( MyMessage { no: 2 } );
 ```
 
 ### Activity Lifecycle
-TODO
+
+An activity starts in an active lifecycle status.
+The only other status is inactive in the current version of Nuts.
+
+The inactive status can be used to put activities to sleep temporarily.
+While inactive, the activity will not be notified of events it has subscribed to.
+A subscription filter can been used to change this behavior.
+(See [`subscribe_masked`](struct.ActivityId.html#method.subscribe_masked))
+
+If the status of a changes from active to inactive, the corresponding [`on_leave`](struct.ActivityId.html#method.on_leave) and [`on_leave_domained`](struct.ActivityId.html#method.on_leave_domained) subscriptions will be called.
+
+If the status of a changes from inactive to active, the corresponding [`on_enter`](struct.ActivityId.html#method.on_enter) and [`on_enter_domained`](struct.ActivityId.html#method.on_enter_domained) subscriptions will be called.0
+
+
 ### Understanding the Execution Order
 TODO
 
@@ -95,3 +106,4 @@ TODO
 TODO (Share with library level docs)
 
 
+TODO: Fix README links

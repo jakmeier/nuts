@@ -38,7 +38,7 @@ struct TestUpdateMsg;
 fn closure_registration() {
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();
-    let id = crate::new_activity(a, true);
+    let id = crate::new_activity(a);
     id.subscribe(|activity: &mut TestActivity, _: &TestUpdateMsg| {
         activity.inc(1);
     });
@@ -54,7 +54,8 @@ fn active_inactive() {
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();
     // Start as not active
-    let id = crate::new_activity(a, false);
+    let id = crate::new_activity(a);
+    id.set_status(LifecycleStatus::Inactive);
 
     // Register for active only
     id.subscribe(|activity: &mut TestActivity, _msg: &TestUpdateMsg| {
@@ -63,7 +64,7 @@ fn active_inactive() {
 
     crate::publish(TestUpdateMsg);
     assert_eq!(counter.get(), 0, "Called inactive activity");
-    crate::set_active(id, true);
+    id.set_status(LifecycleStatus::Active);
     crate::publish(TestUpdateMsg);
     assert_eq!(counter.get(), 1, "Activation for activity didn't work");
 }
@@ -72,7 +73,7 @@ fn active_inactive() {
 fn enter_leave() {
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();
-    let id = crate::new_activity(a, true);
+    let id = crate::new_activity(a);
 
     id.on_enter(|activity: &mut TestActivity| {
         activity.inc(1);
@@ -84,10 +85,10 @@ fn enter_leave() {
     crate::publish(TestUpdateMsg);
     assert_eq!(counter.get(), 0, "Called enter/leave without status change");
 
-    crate::set_active(id, false);
+    id.set_status(LifecycleStatus::Inactive);
     assert_eq!(counter.get(), 10);
 
-    crate::set_active(id, true);
+    id.set_status(LifecycleStatus::Active);
     assert_eq!(counter.get(), 11);
 }
 
@@ -96,7 +97,7 @@ fn domained_activity() {
     let a = TestActivity::new();
     let d = TestDomains::DomainA;
     crate::store_to_domain(&d, 7usize);
-    let id = crate::new_domained_activity(a, &d, true);
+    let id = crate::new_domained_activity(a, &d);
     id.subscribe_domained(|_activity, domain, _msg: &TestUpdateMsg| {
         let x: usize = *domain.get();
         assert_eq!(7, x);
@@ -110,7 +111,7 @@ fn message_passing() {
     // Set up activity that increases a counter by the value specified in messages of type TestMessage
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();
-    let id = crate::new_activity(a, true);
+    let id = crate::new_activity(a);
     id.subscribe(|activity, msg: &TestMessage| {
         activity.inc(msg.0);
     });
@@ -132,7 +133,7 @@ fn publish_inside_publish() {
 
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();
-    let id = crate::new_activity(a, true);
+    let id = crate::new_activity(a);
     id.subscribe(|activity, _msg: &TestUpdateMsg| {
         if activity.counter.get() < LAYERS {
             activity.inc(1);
@@ -145,13 +146,13 @@ fn publish_inside_publish() {
 }
 
 #[test]
-fn set_active_inside_publish() {
+fn set_status_inside_publish() {
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();
-    let id = crate::new_activity(a, true);
+    let id = crate::new_activity(a);
     id.subscribe(move |activity, _msg: &TestUpdateMsg| {
         activity.inc(1);
-        crate::set_active(id, false);
+        id.set_status(LifecycleStatus::Inactive);
     });
     crate::publish(TestUpdateMsg);
     crate::publish(TestUpdateMsg);
@@ -164,7 +165,7 @@ struct TestMessageNoClone;
 fn owned_message() {
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();
-    let id = crate::new_activity(a, true);
+    let id = crate::new_activity(a);
     id.subscribe_owned(|activity, _msg: TestMessageNoClone| {
         activity.inc(1);
     });
@@ -177,7 +178,7 @@ fn owned_domained_message() {
     let counter = a.shared_counter_ref();
     let d = TestDomains::DomainA;
     crate::store_to_domain(&d, 7usize);
-    let id = crate::new_domained_activity(a, &d, true);
+    let id = crate::new_domained_activity(a, &d);
     id.subscribe_domained_owned(|activity, domain, _msg: TestMessageNoClone| {
         let x: usize = *domain.get();
         assert_eq!(7, x);

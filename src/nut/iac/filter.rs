@@ -1,7 +1,10 @@
 use crate::*;
 
 /// Defines under which circumstances a subscribing activity should be called.
+/// At the moment, the only filter option is to check the activity lifecycle state.
+/// The default filter will ignore events when the activity is inactive.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct SubscriptionFilter {
     /// Only call the subscribed closure when the activity is active.
     pub active_only: bool,
@@ -27,6 +30,6 @@ impl ActivityContainer {
         id: ActivityId<A>,
         filter: &SubscriptionFilter,
     ) -> bool {
-        !filter.active_only || self.is_active(id.id)
+        !filter.active_only || self.status(id.id).is_active()
     }
 }

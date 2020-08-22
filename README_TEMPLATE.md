@@ -8,7 +8,8 @@
 @DOC NEW_ACTIVITY
 
 ### Activity Lifecycle
-TODO
+@DOC ACTIVITY_LIFECYCLE
+
 ### Understanding the Execution Order
 TODO
 
@@ -24,3 +25,4 @@ TODO
 TODO (Share with library level docs)
 
 
+TODO: Fix README links

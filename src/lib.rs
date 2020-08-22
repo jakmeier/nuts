@@ -4,7 +4,7 @@
 //! ## Quick first example
 //! ```rust
 //! struct Activity;
-//! let activity = nuts::new_activity(Activity, true);
+//! let activity = nuts::new_activity(Activity);
 //! activity.subscribe(|_activity, n: &usize| println!("Subscriber received {}", n) );
 //! nuts::publish(17usize);
 //! // "Subscriber received 17" is printed
@@ -47,9 +47,8 @@ pub struct Method<ACTIVITY>(dyn Fn(&mut ACTIVITY, Option<&mut DomainState>));
 ///
 // @ START-DOC NEW_ACTIVITY
 /// `nuts::new_activity(...)` is the simplest method to create a new activity.
-/// It takes two arguments:
-///  1) `activity`: The activity struct instance, can be any object or primitive
-///  2) `start_active`: boolean value to define initial state of Activity (ACTIVE/INACTIVE)
+/// It takes only a single argument, which can be any struct instance or primitive.
+/// This object will be the private data for the activity.
 ///
 /// An `ActivityId` is returned, which is a handle to the newly registered activity.
 /// Use it to register callbacks on the activity.
@@ -67,8 +66,7 @@ pub struct Method<ACTIVITY>(dyn Fn(&mut ACTIVITY, Option<&mut DomainState>));
 /// // Create activity
 /// let activity = MyActivity::default();
 /// // Activity moves into globally managed stated, ID to handle it is returned
-/// let start_active = true;
-/// let activity_id = nuts::new_activity(activity, start_active);
+/// let activity_id = nuts::new_activity(activity);
 ///
 /// // Add event listener that listens to published `MyMessage` types
 /// activity_id.subscribe(
@@ -84,23 +82,21 @@ pub struct Method<ACTIVITY>(dyn Fn(&mut ACTIVITY, Option<&mut DomainState>));
 /// nuts::publish( MyMessage { no: 2 } );
 /// ```
 // @ END-DOC NEW_ACTIVITY
-pub fn new_activity<A>(activity: A, start_active: bool) -> ActivityId<A>
+pub fn new_activity<A>(activity: A) -> ActivityId<A>
 where
     A: Activity,
 {
-    nut::new_activity(activity, DomainId::default(), start_active)
+    nut::new_activity(activity, DomainId::default(), LifecycleStatus::Active)
 }
 
 /// Consumes a struct that is registered as an Activity with access to the specified domain.
 /// Use the returned `ActivityId` to register callbacks on the activity.
-///
-/// `start_active`: Initial state of the activity
-pub fn new_domained_activity<A, D>(activity: A, domain: &D, start_active: bool) -> ActivityId<A>
+pub fn new_domained_activity<A, D>(activity: A, domain: &D) -> ActivityId<A>
 where
     A: Activity,
     D: DomainEnumeration,
 {
-    nut::new_activity(activity, DomainId::new(domain), start_active)
+    nut::new_activity(activity, DomainId::new(domain), LifecycleStatus::Active)
 }
 
 /// Puts the data object to the domain, which can be accessed by all associated activities.
@@ -119,10 +115,4 @@ where
 /// Send the message to all subscribed activities
 pub fn publish<A: Any>(a: A) {
     nut::publish_custom(a)
-}
-
-/// Changes the active status of an activity.
-/// If the status changes, the corresponding enter/leave subscriptions will be called.
-pub fn set_active(id: impl Into<UncheckedActivityId>, active: bool) {
-    nut::set_active(id.into(), active)
 }

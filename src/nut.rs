@@ -68,7 +68,7 @@ impl Nut {
 pub(crate) fn new_activity<A>(
     activity: A,
     domain_index: DomainId,
-    start_active: bool,
+    status: LifecycleStatus,
 ) -> ActivityId<A>
 where
     A: Activity,
@@ -82,7 +82,7 @@ where
         nut.activities
             .try_borrow_mut()
             .expect(err)
-            .add(activity, domain_index, start_active)
+            .add(activity, domain_index, status)
     })
 }
 
@@ -199,8 +199,8 @@ pub(crate) fn register_domained_no_payload<A, F>(
     });
 }
 
-pub(crate) fn set_active(id: UncheckedActivityId, active: bool) {
-    NUT.with(|nut| nut.set_active(id, active));
+pub(crate) fn set_status(id: UncheckedActivityId, status: LifecycleStatus) {
+    NUT.with(|nut| nut.set_status(id, status));
 }
 
 pub(crate) fn write_domain<D, T>(domain: &D, data: T) -> Result<(), std::cell::BorrowMutError>
