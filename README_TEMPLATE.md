@@ -47,11 +47,19 @@ This will allow to subscribe with closures that have access to domain state.
 #### Example of Activity with Domain
 @DOC NEW_ACTIVITY_WITH_DOMAIN
 
-## Complete Example
-TODO 
-<!-- (Share with library level docs) -->
-
 ## Advanced: Understanding the Execution Order
 @DOC PUBLISH_ADVANCED
 
+## Full Demo Examples
+There is currently one example available in `examples/webstd.rs`.
+It shows how Nuts can be combined with [stdweb](https://github.com/koute/stdweb) to build a web application.
+It uses multiple activities with domains and lifecycle status changes. 
+
+## WIP
+This library is still work-in-progress.
+Hopefully, a first publication on cates.io is coming soon.
+
 TODO: Fix README links
+TODO: Fix example test (broken because it tries to compile without stdweb)
+TODO: Write a blog post about the motivation behind Nuts
+TODO: Cleanup documentation, add more examples where necessary

@@ -151,6 +151,8 @@ Library users can define the number of domains but each activity can only join o
 Domains should only be used when data needs to be shared between multiple activities of the same or different types.
 If data is only used by a single activity, it is usually better to store it in the activity struct itself.
 
+In case only one domain is used, you can also consider to use [`DefaultDomain`](struct.DefaultDomain.html) instead of creating your own enum.
+
 For now, there is no real benefit from using multiple Domains, other than data isolation.
 But there are plans for the future that will schedule Activities in different threads, based on their domain.
 
@@ -218,9 +220,6 @@ activity_id.subscribe_domained(
 nuts::publish( MyMessage );
 ```
 
-## Complete Example
-TODO (Share with library level docs)
-
 ## Advanced: Understanding the Execution Order
 
 When calling `nuts::publish(...)`, the message may not always be published immediately. While executing a subscription handler from previous `publish`, all new messages are queued up until the previous one is completed.
@@ -249,4 +248,16 @@ nuts::publish(0usize);
 // End of 3
 ```
 
+## Full Demo Examples
+There is currently one example available in `examples/webstd.rs`.
+It shows how Nuts can be combined with [stdweb](https://github.com/koute/stdweb) to build a web application.
+It uses multiple activities with domains and lifecycle status changes. 
+
+## WIP
+This library is still work-in-progress.
+Hopefully, a first publication on cates.io is coming soon.
+
 TODO: Fix README links
+TODO: Fix example test (broken because it tries to compile without stdweb)
+TODO: Write a blog post about the motivation behind Nuts
+TODO: Cleanup documentation, add more examples where necessary

@@ -38,7 +38,7 @@
 
 mod nut;
 
-pub use crate::nut::iac::managed_state::{DomainEnumeration, DomainState};
+pub use crate::nut::iac::managed_state::{DefaultDomain, DomainEnumeration, DomainState};
 use core::any::Any;
 pub use nut::activity::*;
 pub use nut::iac::filter::*;
@@ -184,7 +184,7 @@ where
 ///         println!("End of {}", msg);
 ///     }
 /// );
-/// 
+///
 /// nuts::publish(0usize);
 /// // Output:
 /// // Start of 0

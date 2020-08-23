@@ -8,3 +8,9 @@ readme = "README.md"
 
 
 [dependencies]
+
+
+# Used for example only
+# [dev-dependencies] Sadly, cargo-web cannot run the example with dev-dependecies only...
+[target.wasm32-unknown-unknown.dependencies]
+stdweb = "0.4.20"

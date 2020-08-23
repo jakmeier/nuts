@@ -8,6 +8,17 @@ pub trait DomainEnumeration {
     fn id(&self) -> usize;
 }
 
+/// If only one domain is required, this can be used.
+/// But if you have your own domain type defined with `domain_enum!` or implementing `DomainEnumeration` manually, do not use this.
+/// Different domain types should never be mixed!
+pub struct DefaultDomain;
+
+impl DomainEnumeration for DefaultDomain {
+    fn id(&self) -> usize {
+        0
+    }
+}
+
 impl DomainId {
     pub(crate) fn new(d: &impl DomainEnumeration) -> DomainId {
         DomainId(Some(d.id()))

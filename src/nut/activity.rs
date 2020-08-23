@@ -27,6 +27,8 @@ impl<T: Any> Activity for T {}
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 /// Handle to an `Activity` that has been registered, with a type parameter to track the activity's type.
 /// Can be used to add type-checked closures to the activity, which will be used as event listeners.
+///
+/// Implements `Copy` and `Clone`
 pub struct ActivityId<A> {
     pub(crate) id: UncheckedActivityId,
     pub(crate) domain_index: DomainId,

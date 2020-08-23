@@ -10,6 +10,8 @@ use std::collections::HashMap;
 /// Domains should only be used when data needs to be shared between multiple activities of the same or different types.
 /// If data is only used by a single activity, it is usually better to store it in the activity struct itself.
 ///
+/// In case only one domain is used, you can also consider to use [`DefaultDomain`](struct.DefaultDomain.html) instead of creating your own enum.
+///
 /// For now, there is no real benefit from using multiple Domains, other than data isolation.
 /// But there are plans for the future that will schedule Activities in different threads, based on their domain.
 // @ END-DOC DOMAIN
