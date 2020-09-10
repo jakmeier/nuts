@@ -2,12 +2,12 @@
 
 use core::any::Any;
 use nuts::{LifecycleStatus, SubscriptionFilter};
-use stdweb::traits::*;
-use stdweb::web::event::ClickEvent;
-use stdweb::web::*;
+#[cfg(target_arch = "wasm32")]
+use stdweb::{traits::*, web::event::ClickEvent, web::*};
 
 /* Activities */
 /// Controls the text display at the top.
+#[cfg(target_arch = "wasm32")]
 struct DisplayActivity {
     text: Element,
 }
@@ -30,10 +30,12 @@ struct SumUpdated(usize);
 struct Sum(usize);
 
 /// Helper struct that controls an HTML element and publishes a static event when clicked.
+#[cfg(target_arch = "wasm32")]
 struct ButtonActivity {
     div: Element,
 }
 
+#[cfg(target_arch = "wasm32")]
 pub fn main() {
     // Add styles to the body
     stdweb::web::document()
@@ -119,6 +121,7 @@ pub fn main() {
     );
 }
 
+#[cfg(target_arch = "wasm32")]
 impl DisplayActivity {
     fn new() -> Self {
         let background = stdweb::web::document().create_element("div").unwrap();
@@ -128,7 +131,8 @@ impl DisplayActivity {
             .append_child(&background);
 
         let text = stdweb::web::document().create_element("p").unwrap();
-        text.set_attribute("style", "font-size: xxx-large; font-weight: bold;").expect("browser error");
+        text.set_attribute("style", "font-size: xxx-large; font-weight: bold;")
+            .expect("browser error");
         background.append_child(&text);
 
         let mut out = Self { text };
@@ -140,6 +144,7 @@ impl DisplayActivity {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl ButtonActivity {
     /// Creates a new button and registers a new activity to Nuts to control it.
     /// The button will change its style based on the lifecycle status of the activity.
@@ -181,3 +186,6 @@ impl ButtonActivity {
         activity
     }
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn main() {}
