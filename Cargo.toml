@@ -1,11 +1,14 @@
 [package]
 name = "nuts"
 version = "0.1.0"
+description = "Nuts is a library that offers a simple publish-subscribe API, featuring decoupled creation of the publisher and the subscriber."
 authors = ["Jakob Meier <inbox@jakobmeier.ch>"]
 edition = "2018"
 license = "MIT/Apache-2.0"
 readme = "README.md"
-
+repository = "https://github.com/jakmeier/nuts"
+keywords = [ "publish-subscribe", "event", "global-data", "simple-wasm" ]
+categories = [ "wasm", "web-programming", "memory-management" ]
 
 [dependencies]
 

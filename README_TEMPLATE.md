@@ -1,6 +1,9 @@
 # Nuts
 @DOC CRATE
 
+Nuts has reached a minimal viable product (MVP) with version 0.1 published on [crates.io](https://crates.io/crates/nuts).
+But there are more features planned for the future and breaking API changes are very much possible.
+
 ## Activities
 @DOC ACTIVITY
 
@@ -51,15 +54,10 @@ This will allow to subscribe with closures that have access to domain state.
 @DOC PUBLISH_ADVANCED
 
 ## Full Demo Examples
-There is currently one example available in `examples/webstd.rs`.
-It shows how Nuts can be combined with [stdweb](https://github.com/koute/stdweb) to build a web application.
-It uses multiple activities with domains and lifecycle status changes. 
+A simple example using nuts to build a basic clicker game is available in [examples/clicker-game](tree/master/examples/clicker-game). It requires `wasm-pack` installed to install the package and then `npm run start` in the `www` folder can be run to start a server running the game.
+This example only shows minimal features of nuts.
 
-## WIP
-This library is still work-in-progress.
-Hopefully, a first publication on cates.io is coming soon.
-
-TODO: Fix README links
-TODO: Fix example test (broken because it tries to compile without stdweb)
-TODO: Write a blog post about the motivation behind Nuts
-TODO: Cleanup documentation, add more examples where necessary
+There is another example available in [examples/webstd.rs](tree/master/examples).
+It shows how Nuts can be combined with just [stdweb](https://github.com/koute/stdweb) to build a web application.
+It uses multiple activities with domains and lifecycle status changes.
+This example uses [cargo-web](https://github.com/koute/cargo-web) and can be compiled **without** `wasm-pack` or `npm` installed.

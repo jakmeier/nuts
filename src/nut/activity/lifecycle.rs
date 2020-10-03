@@ -2,7 +2,7 @@ use super::*;
 use crate::nut::Nut;
 
 // @ START-DOC ACTIVITY_LIFECYCLE
-/// Each activity has a lifecycle status that can be change using [`set_status`](struct.ActivityId.html#method.set_status).
+/// Each activity has a lifecycle status that can be changed using [`set_status`](struct.ActivityId.html#method.set_status).
 /// It starts with `LifecycleStatus::Active`.
 /// In the current version of Nuts, the only other status is `LifecycleStatus::Inactive`.
 ///
