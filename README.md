@@ -131,30 +131,30 @@ nuts::publish( MyMessage { no: 2 } );
 
 ## Activity Lifecycle
 
-Each activity has a lifecycle status that can be changed using [`set_status`](https://docs.rs/crate/nuts/0.1.0/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.set_status).
+Each activity has a lifecycle status that can be changed using [`set_status`](https://docs.rs/crate/nuts/0.1.1/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.set_status).
 It starts with `LifecycleStatus::Active`.
 In the current version of Nuts, the only other status is `LifecycleStatus::Inactive`.
 
 The inactive status can be used to put activities to sleep temporarily.
 While inactive, the activity will not be notified of events it has subscribed to.
 A subscription filter can been used to change this behavior.
-(See [`subscribe_masked`](https://docs.rs/crate/nuts/0.1.0/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.subscribe_masked))
+(See [`subscribe_masked`](https://docs.rs/crate/nuts/0.1.1/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.subscribe_masked))
 
-If the status of a changes from active to inactive, the activity's [`on_leave`](https://docs.rs/crate/nuts/0.1.0/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.on_leave) and [`on_leave_domained`](https://docs.rs/crate/nuts/0.1.0/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.on_leave_domained) subscriptions will be called.
+If the status of a changes from active to inactive, the activity's [`on_leave`](https://docs.rs/crate/nuts/0.1.1/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.on_leave) and [`on_leave_domained`](https://docs.rs/crate/nuts/0.1.1/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.on_leave_domained) subscriptions will be called.
 
-If the status of a changes from inactive to active, the activity's [`on_enter`](https://docs.rs/crate/nuts/0.1.0/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.on_enter) and [`on_enter_domained`](https://docs.rs/crate/nuts/0.1.0/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.on_enter_domained) subscriptions will be called.
+If the status of a changes from inactive to active, the activity's [`on_enter`](https://docs.rs/crate/nuts/0.1.1/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.on_enter) and [`on_enter_domained`](https://docs.rs/crate/nuts/0.1.1/nuts/nut/activity/lifecycle.rs/struct.ActivityId.html#method.on_enter_domained) subscriptions will be called.
 
 
 ## Domains
 
 
-A Domain stores arbitrary data for sharing between multiple [Activities](https://docs.rs/crate/nuts/0.1.0/nuts/nut/iac/managed_state/domain_state.rs/trait.Activity.html).
+A Domain stores arbitrary data for sharing between multiple [Activities](https://docs.rs/crate/nuts/0.1.1/nuts/nut/iac/managed_state/domain_state.rs/trait.Activity.html).
 Library users can define the number of domains but each activity can only join one domain.
 
 Domains should only be used when data needs to be shared between multiple activities of the same or different types.
 If data is only used by a single activity, it is usually better to store it in the activity struct itself.
 
-In case only one domain is used, you can also consider to use [`DefaultDomain`](https://docs.rs/crate/nuts/0.1.0/nuts/nut/iac/managed_state/domain_state.rs/struct.DefaultDomain.html) instead of creating your own enum.
+In case only one domain is used, you can also consider to use [`DefaultDomain`](https://docs.rs/crate/nuts/0.1.1/nuts/nut/iac/managed_state/domain_state.rs/struct.DefaultDomain.html) instead of creating your own enum.
 
 For now, there is no real benefit from using multiple Domains, other than data isolation.
 But there are plans for the future that will schedule Activities in different threads, based on their domain.
@@ -255,7 +255,10 @@ nuts::publish(0usize);
 A simple example using nuts to build a basic clicker game is available in [examples/clicker-game](tree/master/examples/clicker-game). It requires `wasm-pack` installed to install the package and then `npm run start` in the `www` folder can be run to start a server running the game.
 This example only shows minimal features of nuts.
 
-There is another example available in [examples/webstd.rs](tree/master/examples).
+There is another example available in [examples/webstd-example](tree/master/examples/webstd-example).
 It shows how Nuts can be combined with just [stdweb](https://github.com/koute/stdweb) to build a web application.
 It uses multiple activities with domains and lifecycle status changes.
 This example uses [cargo-web](https://github.com/koute/cargo-web) and can be compiled **without** `wasm-pack` or `npm` installed.
+
+All examples are set up as their own project. (To avoid polluting the libraries dependencies.)
+Therefore the standard `cargo run --example` will not work. One has to go to the example's directory and build it from there.

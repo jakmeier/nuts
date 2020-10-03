@@ -1,6 +1,6 @@
 [package]
 name = "nuts"
-version = "0.1.0"
+version = "0.1.1"
 description = "Nuts is a library that offers a simple publish-subscribe API, featuring decoupled creation of the publisher and the subscriber."
 authors = ["Jakob Meier <inbox@jakobmeier.ch>"]
 edition = "2018"
@@ -12,8 +12,4 @@ categories = [ "wasm", "web-programming", "memory-management" ]
 
 [dependencies]
 
-
-# Used for example only
-# [dev-dependencies] Sadly, cargo-web cannot run the example with dev-dependecies only...
-[target.wasm32-unknown-unknown.dependencies]
-stdweb = "0.4.20"
+# Silence is golden

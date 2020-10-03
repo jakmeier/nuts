@@ -57,7 +57,10 @@ This will allow to subscribe with closures that have access to domain state.
 A simple example using nuts to build a basic clicker game is available in [examples/clicker-game](tree/master/examples/clicker-game). It requires `wasm-pack` installed to install the package and then `npm run start` in the `www` folder can be run to start a server running the game.
 This example only shows minimal features of nuts.
 
-There is another example available in [examples/webstd.rs](tree/master/examples).
+There is another example available in [examples/webstd-example](tree/master/examples/webstd-example).
 It shows how Nuts can be combined with just [stdweb](https://github.com/koute/stdweb) to build a web application.
 It uses multiple activities with domains and lifecycle status changes.
 This example uses [cargo-web](https://github.com/koute/cargo-web) and can be compiled **without** `wasm-pack` or `npm` installed.
+
+All examples are set up as their own project. (To avoid polluting the libraries dependencies.)
+Therefore the standard `cargo run --example` will not work. One has to go to the example's directory and build it from there.

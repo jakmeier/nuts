@@ -1,4 +1,4 @@
-//! Run with `cargo web start --example stdweb --target wasm32-unknown-unknown`
+//! Run with `cargo web start`
 
 use core::any::Any;
 use nuts::{LifecycleStatus, SubscriptionFilter};
