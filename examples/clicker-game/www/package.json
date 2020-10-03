@@ -1,0 +1,40 @@
+{
+    "name": "nuts-example-clicker-game",
+    "version": "0.1.0",
+    "description": "Example clicker game implemented with nuts",
+    "main": "index.js",
+    "bin": {
+        "clicker-game": ".bin/clicker.js"
+    },
+    "scripts": {
+        "build": "webpack --config webpack.config.js",
+        "start": "webpack-dev-server"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jakmeier/nuts.git"
+    },
+    "keywords": [
+        "webassembly",
+        "wasm",
+        "rust",
+        "webpack"
+    ],
+    "author": "Jakob Meier <inbox@jakobmeier.ch>",
+    "license": "(MIT OR Apache-2.0)",
+    "bugs": {
+        "url": "https://github.com/jakmeier/nuts/issues"
+    },
+    "dependencies": {
+        "clicker-game": "file:../pkg"
+    },
+    "devDependencies": {
+        "copy-webpack-plugin": "^5.0.0",
+        "css-loader": "^4.3.0",
+        "hello-wasm-pack": "^0.1.0",
+        "style-loader": "^1.2.1",
+        "webpack": "^4.29.3",
+        "webpack-cli": "^3.1.0",
+        "webpack-dev-server": "^3.1.5"
+    }
+}

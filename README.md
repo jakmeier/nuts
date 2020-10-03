@@ -252,7 +252,7 @@ nuts::publish(0usize);
 ```
 
 ## Full Demo Examples
-A simple example using nuts to build a basic clicker game is available in [examples/clicker-game](tree/master/examples/clicker-game). It requires `wasm-pack` installed to install the package and then `npm run start` in the `www` folder can be run to start a server running the game.
+A simple example using nuts to build a basic clicker game usable with [npm](https://www.npmjs.com/) is available in [examples/clicker-game](tree/master/examples/clicker-game). It requires `wasm-pack` followed by `npm install` in the `www` folder to to build and install the package. Then `npm run start` inside the `www` folder can be run to start a server running the game.
 This example only shows minimal features of nuts.
 
 There is another example available in [examples/webstd.rs](tree/master/examples).
