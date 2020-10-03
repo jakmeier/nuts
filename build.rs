@@ -18,7 +18,7 @@ fn main() -> std::io::Result<()> {
     let template = BufReader::new(template);
 
     let cargo_version = env!("CARGO_PKG_VERSION");
-    let docs_url = format!("https://docs.rs/crate/nuts/{}/nuts/", cargo_version);
+    let docs_url = format!("https://docs.rs/nuts/{}/nuts/", cargo_version);
     let info = ReadmeInfo { docs_url };
 
     let mut dict = HashMap::new();
@@ -158,13 +158,6 @@ fn readme_transformation(input: &Snippet, info: &ReadmeInfo) -> String {
             '(' => {
                 if state == DecodeState::ClosedBracket {
                     out.push_str(&info.docs_url);
-                    for parent in &input.file_path {
-                        if parent == "src" || parent == "/" {
-                            continue;
-                        }
-                        out.push_str(&parent);
-                        out.push('/');
-                    }
                 }
                 state = DecodeState::Init;
             }
