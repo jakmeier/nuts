@@ -9,6 +9,9 @@ fn main() -> std::io::Result<()> {
     if let Ok(_) = std::env::var("DOCS_RS") {
         return Ok(());
     }
+    if let Err(_) = std::env::var("REBUILD_README") {
+        return Ok(());
+    }
     let out = fs::File::create("README.md")?;
     let mut readme = BufWriter::new(out);
 
