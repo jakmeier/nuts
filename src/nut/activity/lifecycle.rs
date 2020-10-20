@@ -23,6 +23,9 @@ pub enum LifecycleStatus {
     Active,
     /// Inactive / Sleeping
     Inactive,
+    /// Mark for deletion, the activity will be removed and `on_delete` called on it.
+    /// Setting to this state twice will cause panics.
+    Deleted,
 }
 
 pub(crate) struct LifecycleChange {
@@ -39,6 +42,7 @@ impl LifecycleStatus {
         match self {
             Self::Active => true,
             Self::Inactive => false,
+            Self::Deleted => false,
         }
     }
 }
@@ -69,6 +73,17 @@ impl Nut {
             } else if before.is_active() && !lifecycle_change.status.is_active() {
                 self.publish_local(lifecycle_change.activity, Topic::leave(), ());
             }
+        }
+        if lifecycle_change.status == LifecycleStatus::Deleted {
+            self.activities
+                .try_borrow_mut()
+                .expect("Bug: This should not be possible to trigger from outside the library.")
+                .delete(
+                    lifecycle_change.activity,
+                    &mut self.managed_state.try_borrow_mut().expect(
+                        "Bug: This should not be possible to trigger from outside the library.",
+                    ),
+                );
         }
     }
 }

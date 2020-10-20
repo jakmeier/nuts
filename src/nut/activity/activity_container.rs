@@ -8,6 +8,13 @@ use super::*;
 pub(crate) struct ActivityContainer {
     data: Vec<Option<Box<dyn Any>>>,
     active: Vec<LifecycleStatus>,
+    on_delete: Vec<OnDelete>,
+}
+
+enum OnDelete {
+    None,
+    Simple(Box<dyn FnOnce(Box<dyn Any>)>),
+    WithDomain(Box<dyn FnOnce(Box<dyn Any>, &mut ManagedState)>),
 }
 
 /// Handlers stored per Activity
@@ -26,6 +33,7 @@ impl ActivityContainer {
         let i = self.data.len();
         self.data.push(Some(Box::new(a)));
         self.active.push(status);
+        self.on_delete.push(OnDelete::None);
         ActivityId::new(i, domain)
     }
     pub(crate) fn status(&self, id: UncheckedActivityId) -> LifecycleStatus {
@@ -33,6 +41,33 @@ impl ActivityContainer {
     }
     pub(crate) fn set_status(&mut self, id: UncheckedActivityId, status: LifecycleStatus) {
         self.active[id.index] = status
+    }
+    pub(crate) fn add_on_delete(
+        &mut self,
+        id: UncheckedActivityId,
+        f: Box<dyn FnOnce(Box<dyn Any>)>,
+    ) {
+        self.on_delete[id.index] = OnDelete::Simple(f);
+    }
+    pub(crate) fn add_domained_on_delete(
+        &mut self,
+        id: UncheckedActivityId,
+        f: Box<dyn FnOnce(Box<dyn Any>, &mut ManagedState)>,
+    ) {
+        self.on_delete[id.index] = OnDelete::WithDomain(f);
+    }
+    pub(crate) fn delete(&mut self, id: UncheckedActivityId, managed_state: &mut ManagedState) {
+        let activity = self.data[id.index]
+            .take()
+            .expect("Trying to delete a second time");
+        // Taking ownership to call FnOnce
+        let mut on_delete = OnDelete::None;
+        std::mem::swap(&mut on_delete, &mut self.on_delete[id.index]);
+        match on_delete {
+            OnDelete::None => panic!("bug in on delete handling"),
+            OnDelete::Simple(f) => f(activity),
+            OnDelete::WithDomain(f) => f(activity, managed_state),
+        }
     }
 }
 

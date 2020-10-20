@@ -91,6 +91,21 @@ impl<A: Activity> ActivityId<A> {
             SubscriptionFilter::no_filter(),
         )
     }
+    /// Registers a callback closure that is called when an activity is deleted.
+    pub fn on_delete<F>(&self, f: F)
+    where
+        F: FnOnce(A) + 'static,
+    {
+        crate::nut::register_on_delete(*self, f).expect("Cannot set on_delete now");
+    }
+    /// Same as `on_delete` but with domain access in closure
+    pub fn on_delete_domained<F>(&self, f: F)
+    where
+        F: FnOnce(A, &mut DomainState) + 'static,
+    {
+        crate::nut::register_domained_on_delete(*self, f).expect("Cannot set on_delete now");
+    }
+
     /// Registers a callback closure on an activity with a specific topic to listen to.
     ///
     /// By default, the activity will only receive calls when it is active.
@@ -233,6 +248,9 @@ impl<A: Activity> ActivityId<A> {
     }
 
     /// Changes the lifecycle status of the activity
+    ///
+    /// # Panics
+    /// If status is set to Deleted more than once
     pub fn set_status(&self, status: LifecycleStatus) {
         crate::nut::set_status((*self).into(), status);
     }
@@ -240,6 +258,9 @@ impl<A: Activity> ActivityId<A> {
 
 impl UncheckedActivityId {
     /// Changes the lifecycle status of the activity
+    ///
+    /// # Panics
+    /// If status is set to Deleted more than once
     pub fn set_status(&self, status: LifecycleStatus) {
         crate::nut::set_status(*self, status);
     }

@@ -187,3 +187,35 @@ fn owned_domained_message() {
     crate::publish(TestMessageNoClone);
     assert_eq!(1, counter.get()); // Make sure subscription has been called
 }
+
+#[test]
+fn on_delete() {
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let id = crate::new_activity(a);
+    id.on_delete(|a| a.inc(1));
+    assert_eq!(0, counter.get());
+
+    id.set_status(LifecycleStatus::Deleted);
+    assert_eq!(1, counter.get());
+}
+
+#[test]
+fn on_delete_domained() {
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let d = TestDomains::DomainA;
+    crate::store_to_domain(&d, 7usize);
+
+    let id = crate::new_domained_activity(a, &d);
+    id.on_delete_domained(|a, domain| {
+        let x: usize = *domain.get();
+        assert_eq!(7, x);
+        a.inc(1)
+    });
+    assert_eq!(0, counter.get()); // Make sure subscription has been called
+
+    id.set_status(LifecycleStatus::Deleted);
+
+    assert_eq!(1, counter.get()); // Make sure subscription has been called
+}

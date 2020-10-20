@@ -199,6 +199,50 @@ pub(crate) fn register_domained_no_payload<A, F>(
     });
 }
 
+pub(crate) fn register_on_delete<A, F>(
+    id: ActivityId<A>,
+    f: F,
+) -> Result<(), std::cell::BorrowMutError>
+where
+    A: Activity,
+    F: FnOnce(A) + 'static,
+{
+    NUT.with(|nut| {
+        let closure = Box::new(|a: Box<dyn Any>| {
+            let activity = a.downcast().expect("on delete registration has a bug");
+            f(*activity);
+        });
+        nut.activities
+            .try_borrow_mut()?
+            .add_on_delete(id.into(), closure);
+        Ok(())
+    })
+}
+
+pub(crate) fn register_domained_on_delete<A, F>(
+    id: ActivityId<A>,
+    f: F,
+) -> Result<(), std::cell::BorrowMutError>
+where
+    A: Activity,
+    F: FnOnce(A, &mut DomainState) + 'static,
+{
+    NUT.with(|nut| {
+        let cloned_id = id.clone();
+        let closure = Box::new(move |a: Box<dyn Any>, managed_state: &mut ManagedState| {
+            let activity = a.downcast().expect("on delete registration has a bug");
+            let domain = managed_state
+                .get_mut(cloned_id.domain_index)
+                .expect("missing domain");
+            f(*activity, domain);
+        });
+        nut.activities
+            .try_borrow_mut()?
+            .add_domained_on_delete(id.into(), closure);
+        Ok(())
+    })
+}
+
 pub(crate) fn set_status(id: UncheckedActivityId, status: LifecycleStatus) {
     NUT.with(|nut| nut.set_status(id, status));
 }
