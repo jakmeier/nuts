@@ -17,7 +17,10 @@ use std::collections::HashMap;
 // @ END-DOC DOMAIN
 #[derive(Default)]
 pub struct DomainState {
-    objects: HashMap<TypeId, Box<dyn Any>>,
+    // Indirection to Vec is used here to allow for safe internal mutability without falling back to RefCells.
+    // (RefCells are uneasy to use from outside AND the runtime hit is larger)
+    objects: Vec<Box<dyn Any>>,
+    index_map: HashMap<TypeId, usize>,
 }
 
 impl DomainState {
@@ -27,21 +30,56 @@ impl DomainState {
     /// If an old value of the same type already exists in the domain, it will be overwritten.
     // @ END-DOC DOMAIN_STORE
     pub fn store<T: Any>(&mut self, obj: T) {
-        self.objects.insert(TypeId::of::<T>(), Box::new(obj));
+        let i = self.objects.len();
+        self.objects.push(Box::new(obj));
+        self.index_map.insert(TypeId::of::<T>(), i);
     }
     /// Returns a reference to a value of the specified type, if such a value has previously been stored to the domain.
     #[allow(clippy::unwrap_used)]
     pub fn try_get<T: Any>(&self) -> Option<&T> {
-        self.objects
+        self.index_map
             .get(&TypeId::of::<T>())
-            .map(|obj| obj.as_ref().downcast_ref().unwrap())
+            .map(|index| self.objects[*index].as_ref().downcast_ref().unwrap())
     }
     /// Same as [`try_get`](#try_get) but grants mutable access to the object.
     #[allow(clippy::unwrap_used)]
     pub fn try_get_mut<T: Any>(&mut self) -> Option<&mut T> {
-        self.objects
-            .get_mut(&TypeId::of::<T>())
-            .map(|obj| obj.as_mut().downcast_mut().unwrap())
+        if let Some(index) = self.index_map.get(&TypeId::of::<T>()) {
+            Some(self.objects[*index].as_mut().downcast_mut().unwrap())
+        } else {
+            None
+        }
+    }
+    /// Return two mutable references to domain objects
+    #[allow(clippy::unwrap_used)]
+    pub fn try_get_2_mut<T1: Any, T2: Any>(&mut self) -> (Option<&mut T1>, Option<&mut T2>) {
+        let type_1: TypeId = TypeId::of::<T1>();
+        let type_2: TypeId = TypeId::of::<T2>();
+        assert_ne(type_1, type_2);
+        let i1 = self.index_map.get(&type_1);
+        let i2 = self.index_map.get(&type_2);
+        if i1.is_none() {
+            return (None, self.try_get_mut());
+        }
+        if i2.is_none() {
+            return (self.try_get_mut(), None);
+        }
+
+        let i1 = i1.unwrap();
+        let i2 = i2.unwrap();
+
+        let split = i1.min(i2) + 1;
+        let (left, right) = self.objects.split_at_mut(split);
+
+        let (t1, t2) = if i1 < i2 {
+            (&mut left[*i1], &mut right[i2 - split])
+        } else {
+            (&mut right[i1 - split], &mut left[*i2])
+        };
+        (
+            Some(t1.as_mut().downcast_mut().unwrap()),
+            Some(t2.as_mut().downcast_mut().unwrap()),
+        )
     }
     /// Returns a reference to a value of the specified type, taken from the domain.
     /// # Panics
@@ -49,10 +87,7 @@ impl DomainState {
     /// [`try_get()`](#try_get) is usually recommended instead.
     #[allow(clippy::unwrap_used)]
     pub fn get<T: Any>(&self) -> &T {
-        self.objects
-            .get(&TypeId::of::<T>())
-            .map(|obj| obj.as_ref().downcast_ref().unwrap())
-            .expect("Not in domain")
+        self.try_get().expect("Not in domain")
     }
     /// Returns a mutable reference to a value of the specified type, taken from the domain.
     /// # Panics
@@ -60,9 +95,13 @@ impl DomainState {
     /// [`try_get_mut()`](#try_get_mut) is usually recommended instead.
     #[allow(clippy::unwrap_used)]
     pub fn get_mut<T: Any>(&mut self) -> &mut T {
-        self.objects
-            .get_mut(&TypeId::of::<T>())
-            .map(|obj| obj.as_mut().downcast_mut().unwrap())
-            .expect("Not in domain")
+        self.try_get_mut().expect("Not in domain")
+    }
+}
+// This should really be a const fn so that we get compile-time panic instead of run-time checks.
+// But unfortunately, that is currently not possible.
+fn assert_ne(t1: TypeId, t2: TypeId) {
+    if t1 != t2 {
+        panic!("Cannot get two mutable references of same type from domain")
     }
 }
