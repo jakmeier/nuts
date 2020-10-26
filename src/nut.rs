@@ -19,6 +19,8 @@ use iac::managed_state::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+use self::iac::publish::ResponseTracker;
+
 thread_local!(static NUT: Nut = Nut::new());
 
 /// A nut stores thread-local state and provides an easy interface to access it.
@@ -26,7 +28,6 @@ thread_local!(static NUT: Nut = Nut::new());
 /// To allow nested access to the nut, it is a read-only structure.
 /// The field of it can be accessed separately. The library is designed carefully to
 /// ensure single-write/multiple-reader is enforced at all times.
-/// (As the API matures, user-side errors should become more and more unlikely)
 #[derive(Default)]
 struct Nut {
     /// Stores the data for activities, the semi-isolated components of this library.
@@ -43,6 +44,10 @@ struct Nut {
     /// FIFO queue for published messages and other events that cannot be processed immediately.
     /// Atomically accessed mutably between closure dispatches.
     deferred_events: ThreadLocalFifo<Deferred>,
+    /// Tracks awaited responses, which are pending futures.
+    /// Used when creating new futures (NutsResponse) and when polling the same.
+    /// Atomically accessed in with_response_tracker_mut() only.
+    response_tracker: RefCell<ResponseTracker>,
     /// A flag that marks if a broadcast is currently on-going
     executing: AtomicBool,
 }
@@ -62,6 +67,14 @@ impl Nut {
             .entry(topic)
             .or_insert_with(Default::default)[id]
             .push(closure);
+    }
+    pub(crate) fn with_response_tracker_mut<T>(
+        f: impl FnOnce(&mut ResponseTracker) -> T,
+    ) -> Result<T, std::cell::BorrowMutError> {
+        NUT.with(|nut| {
+            let mut response_tracker = nut.response_tracker.try_borrow_mut()?;
+            Ok(f(&mut *response_tracker))
+        })
     }
 }
 
@@ -88,6 +101,11 @@ where
 
 pub(crate) fn publish_custom<A: Any>(a: A) {
     NUT.with(|nut| nut.publish(a))
+}
+
+pub(crate) async fn publish_custom_and_await<A: Any>(a: A) {
+    NUT.with(move |nut| nut.publish_and_await(a)).await;
+    ()
 }
 
 pub(crate) fn register<A, F, MSG>(id: ActivityId<A>, f: F, filter: SubscriptionFilter)

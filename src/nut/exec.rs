@@ -1,11 +1,13 @@
 use crate::nut::activity::LifecycleChange;
 use crate::nut::iac::publish::BroadcastInfo;
+use crate::nut::iac::publish::ResponseSlot;
 use crate::nut::Nut;
 
 pub(crate) mod fifo;
 
 pub(crate) enum Deferred {
     Broadcast(BroadcastInfo),
+    BroadcastAwaitingResponse(BroadcastInfo, ResponseSlot),
     LifecycleChange(LifecycleChange),
 }
 use core::sync::atomic::Ordering;
@@ -31,6 +33,10 @@ impl Nut {
         while let Some(deferred) = self.deferred_events.pop() {
             match deferred {
                 Deferred::Broadcast(b) => self.unchecked_broadcast(b),
+                Deferred::BroadcastAwaitingResponse(b, slot) => {
+                    self.unchecked_broadcast(b);
+                    Nut::with_response_tracker_mut(|rt| rt.done(&slot)).unwrap();
+                }
                 Deferred::LifecycleChange(lc) => self.unchecked_lifecycle_change(&lc),
             }
         }

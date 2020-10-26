@@ -101,7 +101,7 @@ impl DomainState {
 // This should really be a const fn so that we get compile-time panic instead of run-time checks.
 // But unfortunately, that is currently not possible.
 fn assert_ne(t1: TypeId, t2: TypeId) {
-    if t1 != t2 {
+    if t1 == t2 {
         panic!("Cannot get two mutable references of same type from domain")
     }
 }
