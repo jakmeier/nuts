@@ -9,8 +9,12 @@ pub(crate) enum Deferred {
     Broadcast(BroadcastInfo),
     BroadcastAwaitingResponse(BroadcastInfo, ResponseSlot),
     LifecycleChange(LifecycleChange),
+    DomainStore(DomainId, TypeId, Box<dyn Any>),
 }
 use core::sync::atomic::Ordering;
+use std::any::{Any, TypeId};
+
+use super::iac::managed_state::DomainId;
 
 impl Nut {
     /// Delivers all queue broadcasts (or other events) and all newly added broadcasts during that time period.
@@ -38,6 +42,13 @@ impl Nut {
                     Nut::with_response_tracker_mut(|rt| rt.done(&slot)).unwrap();
                 }
                 Deferred::LifecycleChange(lc) => self.unchecked_lifecycle_change(&lc),
+                Deferred::DomainStore(domain, id, obj) => self
+                    .managed_state
+                    .try_borrow_mut()
+                    .unwrap()
+                    .get_mut(domain)
+                    .expect("Domain ID invalid")
+                    .store_unchecked(id, obj),
             }
         }
     }

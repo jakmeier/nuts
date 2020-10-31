@@ -1,5 +1,5 @@
 use core::any::{Any, TypeId};
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 
 /// Stores passive data that can be accessed in event handlers of multiple activities.
 ///
@@ -30,9 +30,33 @@ impl DomainState {
     /// If an old value of the same type already exists in the domain, it will be overwritten.
     // @ END-DOC DOMAIN_STORE
     pub fn store<T: Any>(&mut self, obj: T) {
-        let i = self.objects.len();
-        self.objects.push(Box::new(obj));
-        self.index_map.insert(TypeId::of::<T>(), i);
+        let id = TypeId::of::<T>();
+        match self.index_map.entry(id) {
+            Entry::Occupied(entry) => {
+                *self.objects[*entry.get()].downcast_mut().unwrap() = obj;
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(self.objects.len());
+                self.objects.push(Box::new(obj));
+            }
+        }
+    }
+    /// For internal use only.
+    ///
+    /// Non-generic variant of store.
+    /// Used for delayed stores to domains.
+    /// 
+    /// This variant is slightly less efficient as it will allocate another Box if the value was already in the domain.
+    pub(crate) fn store_unchecked(&mut self, id: TypeId, obj: Box<dyn Any>) {
+        match self.index_map.entry(id) {
+            Entry::Occupied(entry) => {
+                self.objects[*entry.get()] = obj;
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(self.objects.len());
+                self.objects.push(obj);
+            }
+        }
     }
     /// Returns a reference to a value of the specified type, if such a value has previously been stored to the domain.
     #[allow(clippy::unwrap_used)]

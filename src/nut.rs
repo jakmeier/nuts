@@ -16,8 +16,8 @@ use core::any::Any;
 use core::sync::atomic::AtomicBool;
 use exec::fifo::ThreadLocalFifo;
 use iac::managed_state::*;
-use std::cell::RefCell;
 use std::collections::HashMap;
+use std::{any::TypeId, cell::RefCell};
 
 use self::iac::publish::ResponseTracker;
 
@@ -265,17 +265,20 @@ pub(crate) fn set_status(id: UncheckedActivityId, status: LifecycleStatus) {
     NUT.with(|nut| nut.set_status(id, status));
 }
 
-pub(crate) fn write_domain<D, T>(domain: &D, data: T) -> Result<(), std::cell::BorrowMutError>
+pub(crate) fn write_domain<D, T>(domain: &D, data: T)
 where
     D: DomainEnumeration,
     T: core::any::Any,
 {
     NUT.with(|nut| {
         let id = DomainId::new(domain);
-        let mut managed_state = nut.managed_state.try_borrow_mut()?;
-        managed_state.prepare(id);
-        let storage = managed_state.get_mut(id).expect("No domain");
-        storage.store(data);
-        Ok(())
+        if let Ok(mut managed_state) = nut.managed_state.try_borrow_mut() {
+            managed_state.prepare(id);
+            let storage = managed_state.get_mut(id).expect("No domain");
+            storage.store(data);
+        } else {
+            let event = Deferred::DomainStore(id, TypeId::of::<T>(), Box::new(data));
+            nut.deferred_events.push(event);
+        }
     })
 }

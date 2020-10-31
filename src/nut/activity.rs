@@ -130,7 +130,7 @@ impl<A: Activity> ActivityId<A> {
     ///
     /// Note that the first argument of the closure is a mutable reference to the activity object.
     /// The second argument is a read-only reference to the published message.
-    /// Both types must match exactly or otherwise the closure will either not be accepted by the compiler.
+    /// Both types must match exactly or otherwise the closure will not be accepted by the compiler.
     ///
     /// A function with the correct argument types can also be used to subscribe.
     /// ```rust
@@ -157,6 +157,9 @@ impl<A: Activity> ActivityId<A> {
         crate::nut::register(*self, f, Default::default())
     }
     /// Same as [subscribe](#method.subscribe) but gives mutable access to the message object.
+    /// 
+    /// Make sure to use the correct signature for the function, the Rust compiler may give strange error messages otherwise.
+    /// For example, the message must be borrowed by the subscription handler.
     pub fn subscribe_mut<F, MSG>(&self, f: F)
     where
         F: Fn(&mut A, &mut MSG) + 'static,
@@ -180,6 +183,9 @@ impl<A: Activity> ActivityId<A> {
     ///
     /// By default, the activity will only receive calls when it is active.
     /// Use `subscribe_domained_masked` for more control over this behavior.
+    /// 
+    /// Make sure to use the correct signature for the function, the Rust compiler may give strange error messages otherwise.
+    /// For example, the message must be borrowed by the subscription handler.
     ///
     /// # Panics
     /// Panics if the activity has not been registered with a domain.    

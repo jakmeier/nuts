@@ -142,15 +142,15 @@ where
 
 /// Puts the data object to the domain, which can be accessed by all associated activities.
 ///
-/// This function is only valid outside of activities.
-/// Inside activities, only access domains through the handlers borrowed access.
-/// Typically, this function is only used for initialization of the domain state.
+/// This function stores the data to the domain immediately if called outside of activities.
+/// Inside activities, it will be delayed. However, any messages published after calling this function can
+/// rely on the store to the domain to have completed when the corresponding subscribers are executed.
 pub fn store_to_domain<D, T>(domain: &D, data: T)
 where
     D: DomainEnumeration,
     T: core::any::Any,
 {
-    nut::write_domain(domain, data).expect("You cannot use `store_to_domain` after initialization.")
+    nut::write_domain(domain, data)
 }
 
 /// Send the message to all subscribed activities
