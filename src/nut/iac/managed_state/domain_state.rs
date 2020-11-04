@@ -45,7 +45,7 @@ impl DomainState {
     ///
     /// Non-generic variant of store.
     /// Used for delayed stores to domains.
-    /// 
+    ///
     /// This variant is slightly less efficient as it will allocate another Box if the value was already in the domain.
     pub(crate) fn store_unchecked(&mut self, id: TypeId, obj: Box<dyn Any>) {
         match self.index_map.entry(id) {
