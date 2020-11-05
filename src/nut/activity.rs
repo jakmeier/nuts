@@ -42,7 +42,7 @@ pub struct ActivityId<A> {
 /// The information about the activity's type is lost at this point.
 /// Therefore, this id cannot be used to register closures.
 pub struct UncheckedActivityId {
-    index: usize,
+    pub(crate) index: usize,
 }
 
 impl<A: Activity> ActivityId<A> {
@@ -157,7 +157,7 @@ impl<A: Activity> ActivityId<A> {
         crate::nut::register(*self, f, Default::default())
     }
     /// Same as [subscribe](#method.subscribe) but gives mutable access to the message object.
-    /// 
+    ///
     /// Make sure to use the correct signature for the function, the Rust compiler may give strange error messages otherwise.
     /// For example, the message must be borrowed by the subscription handler.
     pub fn subscribe_mut<F, MSG>(&self, f: F)
@@ -170,6 +170,10 @@ impl<A: Activity> ActivityId<A> {
     /// Registers a callback closure on an activity with a specific topic to listen to.
     /// This variant takes ownership of the message.
     /// Only subscription per type is allowed. Othwerise, a pnic will occur when publishing.
+    ///
+    /// When using this variant, the subscription handler should take ownership of the message.
+    /// It will compile if it is borrowed instead, but then it will also expect a reference to be published. (Which usually doesn't work due to lifetimes)
+    /// Then, it will not react to normal published messages and can be difficult to debug.
     pub fn subscribe_owned<F, MSG>(&self, f: F)
     where
         F: Fn(&mut A, MSG) + 'static,
@@ -183,7 +187,7 @@ impl<A: Activity> ActivityId<A> {
     ///
     /// By default, the activity will only receive calls when it is active.
     /// Use `subscribe_domained_masked` for more control over this behavior.
-    /// 
+    ///
     /// Make sure to use the correct signature for the function, the Rust compiler may give strange error messages otherwise.
     /// For example, the message must be borrowed by the subscription handler.
     ///

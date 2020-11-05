@@ -69,6 +69,15 @@ impl ActivityContainer {
             OnDelete::WithDomain(f) => f(activity, managed_state),
         }
     }
+    pub(crate) fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    pub(crate) fn append(&mut self, other: &mut Self) {
+        self.active.append(&mut other.active);
+        self.data.append(&mut other.data);
+        self.on_delete.append(&mut other.on_delete);
+    }
 }
 
 impl<A: Activity> Index<ActivityId<A>> for ActivityContainer {

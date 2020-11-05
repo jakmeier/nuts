@@ -205,5 +205,4 @@ pub fn publish<A: Any>(a: A) {
 /// message has been published and all subscribers have finished processing it.
 pub async fn publish_awaiting_response<A: Any>(a: A) {
     nut::publish_custom_and_await(a).await;
-    ()
 }

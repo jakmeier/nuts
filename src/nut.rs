@@ -10,6 +10,7 @@ pub(crate) mod iac;
 #[cfg(test)]
 mod test;
 
+use crate::nut::exec::inchoate::InchoateActivityContainer;
 use crate::nut::exec::Deferred;
 use crate::*;
 use core::any::Any;
@@ -23,6 +24,9 @@ use self::iac::publish::ResponseTracker;
 
 thread_local!(static NUT: Nut = Nut::new());
 
+pub(crate) const ERR_MSG: &str =
+    "Bug in nuts. It should be impossible to trigger through any combinations of library calls.";
+
 /// A nut stores thread-local state and provides an easy interface to access it.
 ///
 /// To allow nested access to the nut, it is a read-only structure.
@@ -31,10 +35,10 @@ thread_local!(static NUT: Nut = Nut::new());
 #[derive(Default)]
 struct Nut {
     /// Stores the data for activities, the semi-isolated components of this library.
-    /// Mutable access given atomically on each closure dispatch.
+    /// Mutable access given on each closure dispatch.
     activities: RefCell<ActivityContainer>,
     /// Keeps state necessary for inter-activity communication. (domain state and message slot)
-    /// Mutable access given atomically on each closure dispatch.
+    /// Mutable access given on each closure dispatch.
     managed_state: RefCell<ManagedState>,
     /// Closures sorted by topic.
     /// Mutable access only from outside of handlers, preferably before first publish call.
@@ -50,6 +54,11 @@ struct Nut {
     response_tracker: RefCell<ResponseTracker>,
     /// A flag that marks if a broadcast is currently on-going
     executing: AtomicBool,
+    /// When executing a broadcast, `activities` and `managed_state` is not available.
+    /// To still be able to add new activities and subscriptions during that time, temporary
+    /// structures are used to buffer additions. Theses are then merged in a deferred event.
+    inchoate_activities: RefCell<InchoateActivityContainer>,
+    // inchoate_subscriptions: RefCell<>,
 }
 
 /// A method that can be called by the `ActivityManager`.
@@ -87,15 +96,34 @@ where
     A: Activity,
 {
     NUT.with(|nut| {
-        let err = "Adding new activities from inside an activity is not allowed.";
-        nut.managed_state
-            .try_borrow_mut()
-            .expect(err)
-            .prepare(domain_index);
-        nut.activities
-            .try_borrow_mut()
-            .expect(err)
-            .add(activity, domain_index, status)
+        // When already executing, the state is already borrowed.
+        // In that case, we have to defer creation to a quiescent state.
+        // In the other case, we are guaranteed to have access.
+        if !nut.executing.load(std::sync::atomic::Ordering::Relaxed) {
+            // Make sure domain are allocated.
+            // This is currently necessary on every new_activity call, which is a bit ugly.
+            // On the other hand, performance of creating new activities is only secondary priority.
+            nut.managed_state
+                .try_borrow_mut()
+                .expect(ERR_MSG)
+                .prepare(domain_index);
+            // Make sure that length of activities is available without locking activities.
+            // Again, a bit ugly but performance is secondary in this call.
+            nut.inchoate_activities
+                .try_borrow_mut()
+                .expect(ERR_MSG)
+                .inc_offset();
+            nut.activities
+                .try_borrow_mut()
+                .expect(ERR_MSG)
+                .add(activity, domain_index, status)
+        } else {
+            nut.deferred_events.push(Deferred::FlushInchoateActivities);
+            nut.inchoate_activities
+                .try_borrow_mut()
+                .expect(ERR_MSG)
+                .add(activity, domain_index, status)
+        }
     })
 }
 
@@ -105,7 +133,6 @@ pub(crate) fn publish_custom<A: Any>(a: A) {
 
 pub(crate) async fn publish_custom_and_await<A: Any>(a: A) {
     NUT.with(move |nut| nut.publish_and_await(a)).await;
-    ()
 }
 
 pub(crate) fn register<A, F, MSG>(id: ActivityId<A>, f: F, filter: SubscriptionFilter)

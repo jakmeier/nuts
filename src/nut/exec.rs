@@ -4,17 +4,19 @@ use crate::nut::iac::publish::ResponseSlot;
 use crate::nut::Nut;
 
 pub(crate) mod fifo;
+pub(crate) mod inchoate;
 
 pub(crate) enum Deferred {
     Broadcast(BroadcastInfo),
     BroadcastAwaitingResponse(BroadcastInfo, ResponseSlot),
     LifecycleChange(LifecycleChange),
     DomainStore(DomainId, TypeId, Box<dyn Any>),
+    FlushInchoateActivities,
 }
 use core::sync::atomic::Ordering;
 use std::any::{Any, TypeId};
 
-use super::iac::managed_state::DomainId;
+use super::{iac::managed_state::DomainId, ERR_MSG};
 
 impl Nut {
     /// Delivers all queue broadcasts (or other events) and all newly added broadcasts during that time period.
@@ -39,16 +41,21 @@ impl Nut {
                 Deferred::Broadcast(b) => self.unchecked_broadcast(b),
                 Deferred::BroadcastAwaitingResponse(b, slot) => {
                     self.unchecked_broadcast(b);
-                    Nut::with_response_tracker_mut(|rt| rt.done(&slot)).unwrap();
+                    Nut::with_response_tracker_mut(|rt| rt.done(&slot)).expect(ERR_MSG);
                 }
                 Deferred::LifecycleChange(lc) => self.unchecked_lifecycle_change(&lc),
                 Deferred::DomainStore(domain, id, obj) => self
                     .managed_state
                     .try_borrow_mut()
-                    .unwrap()
+                    .expect(ERR_MSG)
                     .get_mut(domain)
                     .expect("Domain ID invalid")
                     .store_unchecked(id, obj),
+                Deferred::FlushInchoateActivities => self
+                    .inchoate_activities
+                    .try_borrow_mut()
+                    .expect(ERR_MSG)
+                    .flush(&mut *self.activities.try_borrow_mut().expect(ERR_MSG)),
             }
         }
     }
