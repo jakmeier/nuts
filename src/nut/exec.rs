@@ -37,26 +37,46 @@ impl Nut {
     /// only access after locking with executing flag
     fn unchecked_catch_up_deferred_to_quiescence(&self) {
         while let Some(deferred) = self.deferred_events.pop() {
-            match deferred {
-                Deferred::Broadcast(b) => self.unchecked_broadcast(b),
-                Deferred::BroadcastAwaitingResponse(b, slot) => {
-                    self.unchecked_broadcast(b);
-                    Nut::with_response_tracker_mut(|rt| rt.done(&slot)).expect(ERR_MSG);
-                }
-                Deferred::LifecycleChange(lc) => self.unchecked_lifecycle_change(&lc),
-                Deferred::DomainStore(domain, id, obj) => self
-                    .managed_state
-                    .try_borrow_mut()
-                    .expect(ERR_MSG)
-                    .get_mut(domain)
-                    .expect("Domain ID invalid")
-                    .store_unchecked(id, obj),
-                Deferred::FlushInchoateActivities => self
-                    .inchoate_activities
-                    .try_borrow_mut()
-                    .expect(ERR_MSG)
-                    .flush(&mut *self.activities.try_borrow_mut().expect(ERR_MSG)),
+            #[cfg(debug_assertions)]
+            let debug_message = format!("Executing:{:?}", deferred);
+
+            #[cfg(not(debug_assertions))]
+            self.exec_deferred(deferred);
+
+            #[cfg(debug_assertions)]
+            if let Err(panic_info) =
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+                    self.exec_deferred(deferred)
+                }))
+            {
+                println!(
+                    "Panic ocurred while nuts was executing. {:?}",
+                    debug_message
+                );
+                std::panic::resume_unwind(panic_info);
             }
+        }
+    }
+    fn exec_deferred(&self, deferred: Deferred) {
+        match deferred {
+            Deferred::Broadcast(b) => self.unchecked_broadcast(b),
+            Deferred::BroadcastAwaitingResponse(b, slot) => {
+                self.unchecked_broadcast(b);
+                Nut::with_response_tracker_mut(|rt| rt.done(&slot)).expect(ERR_MSG);
+            }
+            Deferred::LifecycleChange(lc) => self.unchecked_lifecycle_change(&lc),
+            Deferred::DomainStore(domain, id, obj) => self
+                .managed_state
+                .try_borrow_mut()
+                .expect(ERR_MSG)
+                .get_mut(domain)
+                .expect("Domain ID invalid")
+                .store_unchecked(id, obj),
+            Deferred::FlushInchoateActivities => self
+                .inchoate_activities
+                .try_borrow_mut()
+                .expect(ERR_MSG)
+                .flush(&mut *self.activities.try_borrow_mut().expect(ERR_MSG)),
         }
     }
 }
@@ -69,5 +89,18 @@ impl Into<Deferred> for BroadcastInfo {
 impl Into<Deferred> for LifecycleChange {
     fn into(self) -> Deferred {
         Deferred::LifecycleChange(self)
+    }
+}
+
+#[cfg(debug_assertions)]
+impl std::fmt::Debug for Deferred {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Broadcast(b) => write!(f, "Broadcasting {:?}", b),
+            Self::BroadcastAwaitingResponse(b, _rs) => write!(f, "Broadcasting {:?}", b),
+            Self::LifecycleChange(lc) => write!(f, "{:?}", lc),
+            Self::DomainStore(_domain, typ, _data) => write!(f, "Storing {:?} to the domain", typ),
+            Self::FlushInchoateActivities => write!(f, "Adding new activities previously deferred"),
+        }
     }
 }

@@ -38,6 +38,10 @@
 
 mod nut;
 
+#[macro_use]
+#[cfg(all(feature = "web-debug", debug_assertions))]
+mod debug;
+
 pub use crate::nut::iac::managed_state::{DefaultDomain, DomainEnumeration, DomainState};
 use core::any::Any;
 pub use nut::activity::*;

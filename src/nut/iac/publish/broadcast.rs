@@ -52,3 +52,10 @@ impl Nut {
         managed_state.clear_broadcast();
     }
 }
+
+#[cfg(debug_assertions)]
+impl std::fmt::Debug for BroadcastInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.topic)
+    }
+}

@@ -87,3 +87,10 @@ impl Nut {
         }
     }
 }
+
+#[cfg(debug_assertions)]
+impl std::fmt::Debug for LifecycleChange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Tranisition to state: {:?}", self.status)
+    }
+}

@@ -13,3 +13,10 @@ categories = [ "wasm", "web-programming", "memory-management" ]
 [dependencies]
 
 # Silence is golden
+
+# Optional dependency, for debug messages in web console. Only use in debug mode.
+wasm-bindgen = "0.2.68"
+web-sys = { optional = true, version = "0.3", features = ['console'] }
+
+[features]
+web-debug = ["web-sys"]
