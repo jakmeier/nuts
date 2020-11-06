@@ -83,9 +83,88 @@ fn on_delete_domained() {
         assert_eq!(7, x);
         a.inc(1)
     });
-    assert_eq!(0, counter.get()); // Make sure subscription has been called
+    assert_eq!(0, counter.get()); // Make sure subscription has not been called, yet
 
     id.set_status(LifecycleStatus::Deleted);
 
     assert_eq!(1, counter.get()); // Make sure subscription has been called
+}
+
+#[test]
+fn delete_without_handler() {
+    let aid = crate::new_activity(());
+    aid.set_status(LifecycleStatus::Deleted);
+}
+
+#[test]
+fn delete_twice() {
+    let aid = crate::new_activity(());
+    aid.set_status(LifecycleStatus::Deleted);
+    aid.set_status(LifecycleStatus::Deleted);
+}
+
+#[test]
+// Subscription handlers should not be called after an activity has been deleted
+fn call_subscription_after_delete() {
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let d = TestDomains::DomainA;
+
+    let id = crate::new_domained_activity(a, &d);
+    id.subscribe_domained(|a, _domain, _msg: &TestMessage| a.inc(1));
+    assert_eq!(0, counter.get()); // Make sure subscription has not been called, yet
+
+    // Make sure subscription has ben registered properly
+    crate::publish(TestMessage(0));
+    assert_eq!(1, counter.get());
+    // Make sure subscription is no longer called
+    id.set_status(LifecycleStatus::Deleted);
+    crate::publish(TestMessage(0));
+    assert_eq!(1, counter.get());
+}
+
+#[test]
+// Subscriptions to a deleted activity should be ignored
+fn subscribe_after_delete() {
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let d = TestDomains::DomainA;
+
+    let id = crate::new_domained_activity(a, &d);
+    id.set_status(LifecycleStatus::Deleted);
+
+    id.subscribe_domained(|a, _domain, _msg: &TestMessage| a.inc(1));
+    assert_eq!(0, counter.get()); // Make sure subscription has not been called, yet
+                                  // Make sure subscription is not called
+    crate::publish(TestMessage(0));
+    assert_eq!(0, counter.get());
+}
+
+#[test]
+// Not really sure what should happen here.
+// Setting to active after deleting is generally illegal, so either there is a panic or nothing happens.
+// Given a complex enough use case, both of them are bad.
+// The former can lead to nasty panics in certain situation which would be fine to ignore.
+// The latter could lead to subtle bugs that are really hard to debug.
+//
+// For now, the intended behavior is to keep activity deleted and no panic.
+fn activate_after_delete() {
+    let a = TestActivity::new();
+    let d = TestDomains::DomainA;
+
+    let id = crate::new_domained_activity(a, &d);
+    id.subscribe_domained(|_a, _domain, _msg: &TestMessage| {
+        panic!("Called subscription A of previously deleted activity.")
+    });
+    id.set_status(LifecycleStatus::Deleted);
+
+    id.subscribe_domained(|_a, _domain, _msg: &TestMessage| {
+        panic!("Called subscription B of previously deleted activity.")
+    });
+    id.set_status(LifecycleStatus::Active);
+
+    id.subscribe_domained(|_a, _domain, _msg: &TestMessage| {
+        panic!("Called subscription C of previously deleted activity.")
+    });
+    crate::publish(TestMessage(0));
 }
