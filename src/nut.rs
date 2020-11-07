@@ -17,14 +17,13 @@ use core::any::Any;
 use core::sync::atomic::AtomicBool;
 use exec::fifo::ThreadLocalFifo;
 use iac::managed_state::*;
-use std::collections::HashMap;
 use std::{any::TypeId, cell::RefCell};
 
-use self::iac::publish::ResponseTracker;
+use self::iac::{publish::ResponseTracker, subscription::Subscriptions};
 
 thread_local!(static NUT: Nut = Nut::new());
 
-pub(crate) const ERR_MSG: &str =
+pub(crate) const IMPOSSIBLE_ERR_MSG: &str =
     "Bug in nuts. It should be impossible to trigger through any combinations of library calls.";
 
 /// A nut stores thread-local state and provides an easy interface to access it.
@@ -44,7 +43,7 @@ struct Nut {
     /// Mutable access only from outside of handlers, preferably before first publish call.
     /// Read-only access afterwards.
     /// (This restriction might change in the future)
-    subscriptions: RefCell<HashMap<Topic, ActivityHandlerContainer>>,
+    subscriptions: Subscriptions,
     /// FIFO queue for published messages and other events that cannot be processed immediately.
     /// Atomically accessed mutably between closure dispatches.
     deferred_events: ThreadLocalFifo<Deferred>,
@@ -70,12 +69,12 @@ impl Nut {
         Default::default()
     }
     fn push_closure<A: 'static>(&self, topic: Topic, id: ActivityId<A>, closure: Handler) {
-        self.subscriptions
-            .try_borrow_mut()
-            .expect("Tried to add a new listener from inside a listener, which is not allowed.")
-            .entry(topic)
-            .or_insert_with(Default::default)[id]
-            .push(closure);
+        if !self.executing.load(std::sync::atomic::Ordering::Relaxed) {
+            self.subscriptions.force_push_closure(topic, id, closure);
+        } else {
+            self.deferred_events
+                .push(Deferred::Subscription(topic, id.into(), closure));
+        }
     }
     pub(crate) fn with_response_tracker_mut<T>(
         f: impl FnOnce(&mut ResponseTracker) -> T,
@@ -105,23 +104,23 @@ where
             // On the other hand, performance of creating new activities is only secondary priority.
             nut.managed_state
                 .try_borrow_mut()
-                .expect(ERR_MSG)
+                .expect(IMPOSSIBLE_ERR_MSG)
                 .prepare(domain_index);
             // Make sure that length of activities is available without locking activities.
             // Again, a bit ugly but performance is secondary in this call.
             nut.inchoate_activities
                 .try_borrow_mut()
-                .expect(ERR_MSG)
+                .expect(IMPOSSIBLE_ERR_MSG)
                 .inc_offset();
             nut.activities
                 .try_borrow_mut()
-                .expect(ERR_MSG)
+                .expect(IMPOSSIBLE_ERR_MSG)
                 .add(activity, domain_index, status)
         } else {
             nut.deferred_events.push(Deferred::FlushInchoateActivities);
             nut.inchoate_activities
                 .try_borrow_mut()
-                .expect(ERR_MSG)
+                .expect(IMPOSSIBLE_ERR_MSG)
                 .add(activity, domain_index, status)
         }
     })
@@ -254,7 +253,7 @@ where
 {
     NUT.with(|nut| {
         let closure = Box::new(|a: Box<dyn Any>| {
-            let activity = a.downcast().expect("on delete registration has a bug");
+            let activity = a.downcast().expect(IMPOSSIBLE_ERR_MSG);
             f(*activity);
         });
         nut.activities
@@ -273,11 +272,10 @@ where
     F: FnOnce(A, &mut DomainState) + 'static,
 {
     NUT.with(|nut| {
-        let cloned_id = id.clone();
         let closure = Box::new(move |a: Box<dyn Any>, managed_state: &mut ManagedState| {
-            let activity = a.downcast().expect("on delete registration has a bug");
+            let activity = a.downcast().expect(IMPOSSIBLE_ERR_MSG);
             let domain = managed_state
-                .get_mut(cloned_id.domain_index)
+                .get_mut(id.domain_index)
                 .expect("missing domain");
             f(*activity, domain);
         });

@@ -57,16 +57,15 @@ impl ActivityContainer {
         self.on_delete[id.index] = OnDelete::WithDomain(f);
     }
     pub(crate) fn delete(&mut self, id: UncheckedActivityId, managed_state: &mut ManagedState) {
-        let activity = self.data[id.index]
-            .take()
-            .expect("Trying to delete a second time");
-        // Taking ownership to call FnOnce
-        let mut on_delete = OnDelete::None;
-        std::mem::swap(&mut on_delete, &mut self.on_delete[id.index]);
-        match on_delete {
-            OnDelete::None => panic!("bug in on delete handling"),
-            OnDelete::Simple(f) => f(activity),
-            OnDelete::WithDomain(f) => f(activity, managed_state),
+        if let Some(activity) = self.data[id.index].take() {
+            // Taking ownership to call FnOnce
+            let mut on_delete = OnDelete::None;
+            std::mem::swap(&mut on_delete, &mut self.on_delete[id.index]);
+            match on_delete {
+                OnDelete::None => { /* NOP  */ }
+                OnDelete::Simple(f) => f(activity),
+                OnDelete::WithDomain(f) => f(activity, managed_state),
+            }
         }
     }
     pub(crate) fn len(&self) -> usize {
@@ -106,16 +105,14 @@ impl ActivityHandlerContainer {
         self.data.get(&id.index).into_iter().flat_map(|f| f.iter())
     }
 }
-impl<A: Activity> Index<ActivityId<A>> for ActivityHandlerContainer {
+impl Index<UncheckedActivityId> for ActivityHandlerContainer {
     type Output = Vec<Handler>;
-    fn index(&self, id: ActivityId<A>) -> &Self::Output {
-        &self.data[&id.id.index]
+    fn index(&self, id: UncheckedActivityId) -> &Self::Output {
+        &self.data[&id.index]
     }
 }
-impl<A: Activity> IndexMut<ActivityId<A>> for ActivityHandlerContainer {
-    fn index_mut(&mut self, id: ActivityId<A>) -> &mut Self::Output {
-        self.data
-            .entry(id.id.index)
-            .or_insert_with(Default::default)
+impl IndexMut<UncheckedActivityId> for ActivityHandlerContainer {
+    fn index_mut(&mut self, id: UncheckedActivityId) -> &mut Self::Output {
+        self.data.entry(id.index).or_insert_with(Default::default)
     }
 }

@@ -19,8 +19,6 @@ fn closure_registration() {
     assert_eq!(counter.get(), 2);
 }
 
-
-
 #[test]
 fn domained_activity() {
     let a = TestActivity::new();

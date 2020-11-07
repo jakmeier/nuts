@@ -35,7 +35,7 @@ impl Nut {
     pub(crate) fn unchecked_broadcast(&self, broadcast: BroadcastInfo) {
         let mut managed_state = self.managed_state.borrow_mut();
         managed_state.set_broadcast(broadcast.msg);
-        if let Some(handlers) = self.subscriptions.borrow().get(&broadcast.topic) {
+        if let Some(handlers) = self.subscriptions.get().get(&broadcast.topic) {
             match broadcast.address {
                 BroadcastAddress::Global => {
                     for f in handlers.iter() {

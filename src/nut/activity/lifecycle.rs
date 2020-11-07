@@ -1,5 +1,5 @@
 use super::*;
-use crate::nut::Nut;
+use crate::nut::{Nut, IMPOSSIBLE_ERR_MSG};
 
 // @ START-DOC ACTIVITY_LIFECYCLE
 /// Each activity has a lifecycle status that can be changed using [`set_status`](struct.ActivityId.html#method.set_status).
@@ -61,12 +61,12 @@ impl Nut {
         let before = self
             .activities
             .try_borrow()
-            .expect("Bug: This should not be possible to trigger from outside the library.")
+            .expect(IMPOSSIBLE_ERR_MSG)
             .status(lifecycle_change.activity);
         if before != lifecycle_change.status {
             self.activities
                 .try_borrow_mut()
-                .expect("Bug: This should not be possible to trigger from outside the library.")
+                .expect(IMPOSSIBLE_ERR_MSG)
                 .set_status(lifecycle_change.activity, lifecycle_change.status);
             if !before.is_active() && lifecycle_change.status.is_active() {
                 self.publish_local(lifecycle_change.activity, Topic::enter(), ());
@@ -77,12 +77,13 @@ impl Nut {
         if lifecycle_change.status == LifecycleStatus::Deleted {
             self.activities
                 .try_borrow_mut()
-                .expect("Bug: This should not be possible to trigger from outside the library.")
+                .expect(IMPOSSIBLE_ERR_MSG)
                 .delete(
                     lifecycle_change.activity,
-                    &mut self.managed_state.try_borrow_mut().expect(
-                        "Bug: This should not be possible to trigger from outside the library.",
-                    ),
+                    &mut self
+                        .managed_state
+                        .try_borrow_mut()
+                        .expect(IMPOSSIBLE_ERR_MSG),
                 );
         }
     }

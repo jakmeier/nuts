@@ -1,7 +1,7 @@
 use crate::nut::activity::LifecycleChange;
-use crate::nut::iac::publish::BroadcastInfo;
-use crate::nut::iac::publish::ResponseSlot;
+use crate::nut::iac::publish::{BroadcastInfo, ResponseSlot};
 use crate::nut::Nut;
+use crate::{Topic, UncheckedActivityId};
 
 pub(crate) mod fifo;
 pub(crate) mod inchoate;
@@ -9,6 +9,7 @@ pub(crate) mod inchoate;
 pub(crate) enum Deferred {
     Broadcast(BroadcastInfo),
     BroadcastAwaitingResponse(BroadcastInfo, ResponseSlot),
+    Subscription(Topic, UncheckedActivityId, Handler),
     LifecycleChange(LifecycleChange),
     DomainStore(DomainId, TypeId, Box<dyn Any>),
     FlushInchoateActivities,
@@ -16,7 +17,7 @@ pub(crate) enum Deferred {
 use core::sync::atomic::Ordering;
 use std::any::{Any, TypeId};
 
-use super::{iac::managed_state::DomainId, ERR_MSG};
+use super::{iac::managed_state::DomainId, Handler, IMPOSSIBLE_ERR_MSG};
 
 impl Nut {
     /// Delivers all queue broadcasts (or other events) and all newly added broadcasts during that time period.
@@ -62,21 +63,24 @@ impl Nut {
             Deferred::Broadcast(b) => self.unchecked_broadcast(b),
             Deferred::BroadcastAwaitingResponse(b, slot) => {
                 self.unchecked_broadcast(b);
-                Nut::with_response_tracker_mut(|rt| rt.done(&slot)).expect(ERR_MSG);
+                Nut::with_response_tracker_mut(|rt| rt.done(&slot)).expect(IMPOSSIBLE_ERR_MSG);
+            }
+            Deferred::Subscription(topic, id, handler) => {
+                self.subscriptions.force_push_closure(topic, id, handler);
             }
             Deferred::LifecycleChange(lc) => self.unchecked_lifecycle_change(&lc),
             Deferred::DomainStore(domain, id, obj) => self
                 .managed_state
                 .try_borrow_mut()
-                .expect(ERR_MSG)
+                .expect(IMPOSSIBLE_ERR_MSG)
                 .get_mut(domain)
                 .expect("Domain ID invalid")
                 .store_unchecked(id, obj),
             Deferred::FlushInchoateActivities => self
                 .inchoate_activities
                 .try_borrow_mut()
-                .expect(ERR_MSG)
-                .flush(&mut *self.activities.try_borrow_mut().expect(ERR_MSG)),
+                .expect(IMPOSSIBLE_ERR_MSG)
+                .flush(&mut *self.activities.try_borrow_mut().expect(IMPOSSIBLE_ERR_MSG)),
         }
     }
 }
@@ -98,6 +102,7 @@ impl std::fmt::Debug for Deferred {
         match self {
             Self::Broadcast(b) => write!(f, "Broadcasting {:?}", b),
             Self::BroadcastAwaitingResponse(b, _rs) => write!(f, "Broadcasting {:?}", b),
+            Self::Subscription(_, _, _) => write!(f, "Adding new subscription"),
             Self::LifecycleChange(lc) => write!(f, "{:?}", lc),
             Self::DomainStore(_domain, typ, _data) => write!(f, "Storing {:?} to the domain", typ),
             Self::FlushInchoateActivities => write!(f, "Adding new activities previously deferred"),

@@ -9,4 +9,5 @@
 pub(crate) mod filter;
 pub(crate) mod managed_state;
 pub(crate) mod publish;
+pub(crate) mod subscription;
 pub(crate) mod topic;
