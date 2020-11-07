@@ -224,3 +224,52 @@ fn delete_inchoate_activity_with_subscriber_and_on_delete() {
     assert_eq!(counter.get(), 12);
     crate::publish(TestMessage(0));
 }
+
+#[test]
+fn on_enter_and_leave_and_delete_for_inchoate_activity() {
+    let main = crate::new_activity(());
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let d = TestDomains::DomainA;
+    crate::store_to_domain(&d, 7usize);
+
+    let aid_slot: Rc<Cell<Option<ActivityId<TestActivity>>>> = Default::default();
+    let aid_slot_clone = aid_slot.clone();
+
+    main.subscribe(move |_, _: &Main| {
+        let id = crate::new_domained_activity(a.clone(), &d);
+        id.on_enter_domained(|activity: &mut TestActivity, domain| {
+            let x: usize = *domain.get();
+            assert_eq!(7, x);
+            activity.inc(1);
+        });
+        id.on_leave_domained(|activity: &mut TestActivity, domain| {
+            let x: usize = *domain.get();
+            assert_eq!(7, x);
+            activity.inc(10);
+        });
+        id.on_delete_domained(|activity: TestActivity, domain| {
+            let x: usize = *domain.get();
+            assert_eq!(7, x);
+            activity.inc(100);
+        });
+        id.set_status(LifecycleStatus::Inactive);
+        id.set_status(LifecycleStatus::Active);
+        aid_slot.set(Some(id));
+    });
+
+    assert_eq!(counter.get(), 0);
+    crate::publish(Main);
+    assert_eq!(counter.get(), 11);
+
+    let aid = aid_slot_clone.get().unwrap();
+    
+    aid.set_status(LifecycleStatus::Inactive);
+    assert_eq!(counter.get(), 21,);
+
+    aid.set_status(LifecycleStatus::Active);
+    assert_eq!(counter.get(), 22,);
+
+    aid.set_status(LifecycleStatus::Deleted);
+    assert_eq!(counter.get(), 132,);
+}

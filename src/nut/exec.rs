@@ -13,6 +13,7 @@ pub(crate) enum Deferred {
     Subscription(NewSubscription),
     OnDeleteSubscription(UncheckedActivityId, OnDelete),
     LifecycleChange(LifecycleChange),
+    RemoveActivity(UncheckedActivityId),
     DomainStore(DomainStoreData),
     FlushInchoateActivities,
 }
@@ -83,6 +84,7 @@ impl Nut {
                     .add_on_delete(id, sub);
             }
             Deferred::LifecycleChange(lc) => self.unchecked_lifecycle_change(&lc),
+            Deferred::RemoveActivity(id) => self.delete_activity(id),
             Deferred::DomainStore(d) => self.exec_domain_store(d),
             Deferred::FlushInchoateActivities => self
                 .inchoate_activities
@@ -113,6 +115,7 @@ impl std::fmt::Debug for Deferred {
             Self::Subscription(sub) => write!(f, "{:?}", sub),
             Self::OnDeleteSubscription(_, _) => write!(f, "Adding new on delete listener"),
             Self::LifecycleChange(lc) => write!(f, "{:?}", lc),
+            Self::RemoveActivity(_id) => write!(f, "Delete activity."),
             Self::DomainStore(ds) => write!(f, "{:?}", ds),
             Self::FlushInchoateActivities => write!(f, "Adding new activities previously deferred"),
         }

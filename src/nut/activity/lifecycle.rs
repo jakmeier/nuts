@@ -80,17 +80,24 @@ impl Nut {
             }
         }
         if lifecycle_change.status == LifecycleStatus::Deleted {
-            self.activities
-                .try_borrow_mut()
-                .expect(IMPOSSIBLE_ERR_MSG)
-                .delete(
+            // Delete must be deferred in case the on_leave is hanging.
+            self.deferred_events
+                .push(nut::exec::Deferred::RemoveActivity(
                     lifecycle_change.activity,
-                    &mut self
-                        .managed_state
-                        .try_borrow_mut()
-                        .expect(IMPOSSIBLE_ERR_MSG),
-                );
+                ));
         }
+    }
+    pub(crate) fn delete_activity(&self, id: UncheckedActivityId) {
+        self.activities
+            .try_borrow_mut()
+            .expect(IMPOSSIBLE_ERR_MSG)
+            .delete(
+                id,
+                &mut self
+                    .managed_state
+                    .try_borrow_mut()
+                    .expect(IMPOSSIBLE_ERR_MSG),
+            );
     }
 }
 

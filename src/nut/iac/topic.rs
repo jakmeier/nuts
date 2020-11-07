@@ -14,7 +14,7 @@ pub(crate) enum Topic {
 pub(crate) enum BuiltinEvent {
     /// On status change to active (not called if started as active)
     Enter,
-    /// On status change to inactive
+    /// On status change to inactive / deleted
     Leave,
 }
 

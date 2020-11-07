@@ -72,11 +72,7 @@ impl std::fmt::Debug for BroadcastInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.address {
             BroadcastAddress::Global => write!(f, "message of type {:?}", self.type_name),
-            BroadcastAddress::Local(_) => write!(
-                f,
-                "message of type {:?} for single activity",
-                self.type_name
-            ),
+            BroadcastAddress::Local(_) => write!(f, "{:?} event", self.topic),
         }
     }
 }

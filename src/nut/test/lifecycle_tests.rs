@@ -134,6 +134,32 @@ fn call_subscription_after_delete() {
 }
 
 #[test]
+// Subscription handlers should not be called after an activity has been deleted, regardless of it being executed deferred or not
+fn deferred_delete_with_hanging_subscription() {
+    let outer = crate::new_activity(());
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let counter_clone = counter.clone();
+    let id = crate::new_activity(a);
+    id.subscribe(|a, msg: &TestMessage| a.inc(msg.0));
+    outer.subscribe(move |_, &()| {
+        assert_eq!(0, counter_clone.get());
+        // This should be called but deferred
+        crate::publish(TestMessage(1));
+        assert_eq!(0, counter_clone.get());
+
+        id.set_status(LifecycleStatus::Deleted);
+
+        // This should not be called at all
+        crate::publish(TestMessage(10));
+        assert_eq!(0, counter_clone.get());
+    });
+    assert_eq!(0, counter.get());
+    crate::publish(());
+    assert_eq!(1, counter.get());
+}
+
+#[test]
 // Subscriptions to a deleted activity should be ignored
 fn subscribe_after_delete() {
     let a = TestActivity::new();
@@ -148,4 +174,18 @@ fn subscribe_after_delete() {
                                   // Make sure subscription is not called
     crate::publish(TestMessage(0));
     assert_eq!(0, counter.get());
+}
+
+#[test]
+fn delete_with_on_leave() {
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let d = TestDomains::DomainA;
+
+    let id = crate::new_domained_activity(a, &d);
+    id.on_leave_domained(|a, _domain| a.inc(1));
+
+    assert_eq!(0, counter.get());
+    id.set_status(LifecycleStatus::Deleted);
+    assert_eq!(1, counter.get());
 }

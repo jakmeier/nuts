@@ -52,6 +52,7 @@ impl<A: Activity> ActivityId<A> {
         }
     }
     /// Registers a callback closure that is called when an activity changes from inactive to active.
+    /// Multiple handlers can be registered.
     pub fn on_enter<F>(&self, f: F)
     where
         F: Fn(&mut A) + 'static,
@@ -71,6 +72,7 @@ impl<A: Activity> ActivityId<A> {
         )
     }
     /// Registers a callback closure that is called when an activity changes from active to inactive.
+    /// Multiple handlers can be registered.
     pub fn on_leave<F>(&self, f: F)
     where
         F: Fn(&mut A) + 'static,
@@ -90,6 +92,8 @@ impl<A: Activity> ActivityId<A> {
         )
     }
     /// Registers a callback closure that is called when an activity is deleted.
+    /// Only one handler can be registered because it takes ownership of the data.
+    /// A second registration will overwrite the first handler.
     pub fn on_delete<F>(&self, f: F)
     where
         F: FnOnce(A) + 'static,
