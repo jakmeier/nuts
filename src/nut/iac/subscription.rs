@@ -1,15 +1,21 @@
-use super::topic::Topic;
+use super::{managed_state::ManagedState, topic::Topic};
 use crate::ActivityHandlerContainer;
 use crate::{
     nut::{Handler, IMPOSSIBLE_ERR_MSG},
     UncheckedActivityId,
 };
 use core::cell::Ref;
-use std::{cell::RefCell, collections::HashMap};
+use std::{any::Any, cell::RefCell, collections::HashMap};
 
 #[derive(Default)]
 pub(crate) struct Subscriptions {
     subscriptions: RefCell<HashMap<Topic, ActivityHandlerContainer>>,
+}
+
+pub(crate) enum OnDelete {
+    None,
+    Simple(Box<dyn FnOnce(Box<dyn Any>)>),
+    WithDomain(Box<dyn FnOnce(Box<dyn Any>, &mut ManagedState)>),
 }
 
 impl Subscriptions {

@@ -10,6 +10,7 @@ pub(crate) enum Deferred {
     Broadcast(BroadcastInfo),
     BroadcastAwaitingResponse(BroadcastInfo, ResponseSlot),
     Subscription(Topic, UncheckedActivityId, Handler),
+    OnDeleteSubscription(UncheckedActivityId, OnDelete),
     LifecycleChange(LifecycleChange),
     DomainStore(DomainId, TypeId, Box<dyn Any>),
     FlushInchoateActivities,
@@ -17,7 +18,10 @@ pub(crate) enum Deferred {
 use core::sync::atomic::Ordering;
 use std::any::{Any, TypeId};
 
-use super::{iac::managed_state::DomainId, Handler, IMPOSSIBLE_ERR_MSG};
+use super::{
+    iac::{managed_state::DomainId, subscription::OnDelete},
+    Handler, IMPOSSIBLE_ERR_MSG,
+};
 
 impl Nut {
     /// Delivers all queue broadcasts (or other events) and all newly added broadcasts during that time period.
@@ -68,6 +72,12 @@ impl Nut {
             Deferred::Subscription(topic, id, handler) => {
                 self.subscriptions.force_push_closure(topic, id, handler);
             }
+            Deferred::OnDeleteSubscription(id, sub) => {
+                self.activities
+                    .try_borrow_mut()
+                    .expect(IMPOSSIBLE_ERR_MSG)
+                    .add_on_delete(id, sub);
+            }
             Deferred::LifecycleChange(lc) => self.unchecked_lifecycle_change(&lc),
             Deferred::DomainStore(domain, id, obj) => self
                 .managed_state
@@ -103,6 +113,7 @@ impl std::fmt::Debug for Deferred {
             Self::Broadcast(b) => write!(f, "Broadcasting {:?}", b),
             Self::BroadcastAwaitingResponse(b, _rs) => write!(f, "Broadcasting {:?}", b),
             Self::Subscription(_, _, _) => write!(f, "Adding new subscription"),
+            Self::OnDeleteSubscription(_, _) => write!(f, "Adding new on delete listener"),
             Self::LifecycleChange(lc) => write!(f, "{:?}", lc),
             Self::DomainStore(_domain, typ, _data) => write!(f, "Storing {:?} to the domain", typ),
             Self::FlushInchoateActivities => write!(f, "Adding new activities previously deferred"),

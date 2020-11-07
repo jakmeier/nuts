@@ -12,6 +12,7 @@ mod test;
 
 use crate::nut::exec::inchoate::InchoateActivityContainer;
 use crate::nut::exec::Deferred;
+use crate::nut::iac::subscription::OnDelete;
 use crate::*;
 use core::any::Any;
 use core::sync::atomic::AtomicBool;
@@ -68,12 +69,26 @@ impl Nut {
     fn new() -> Self {
         Default::default()
     }
+    fn quiescent(&self) -> bool {
+        !self.executing.load(std::sync::atomic::Ordering::Relaxed)
+    }
     fn push_closure<A: 'static>(&self, topic: Topic, id: ActivityId<A>, closure: Handler) {
-        if !self.executing.load(std::sync::atomic::Ordering::Relaxed) {
+        if self.quiescent() {
             self.subscriptions.force_push_closure(topic, id, closure);
         } else {
             self.deferred_events
                 .push(Deferred::Subscription(topic, id.into(), closure));
+        }
+    }
+    fn add_on_delete(&self, id: UncheckedActivityId, subscription: OnDelete) {
+        if self.quiescent() {
+            self.activities
+                .try_borrow_mut()
+                .expect(IMPOSSIBLE_ERR_MSG)
+                .add_on_delete(id, subscription);
+        } else {
+            self.deferred_events
+                .push(Deferred::OnDeleteSubscription(id, subscription))
         }
     }
     pub(crate) fn with_response_tracker_mut<T>(
@@ -243,10 +258,7 @@ pub(crate) fn register_domained_no_payload<A, F>(
     });
 }
 
-pub(crate) fn register_on_delete<A, F>(
-    id: ActivityId<A>,
-    f: F,
-) -> Result<(), std::cell::BorrowMutError>
+pub(crate) fn register_on_delete<A, F>(id: ActivityId<A>, f: F)
 where
     A: Activity,
     F: FnOnce(A) + 'static,
@@ -256,17 +268,11 @@ where
             let activity = a.downcast().expect(IMPOSSIBLE_ERR_MSG);
             f(*activity);
         });
-        nut.activities
-            .try_borrow_mut()?
-            .add_on_delete(id.into(), closure);
-        Ok(())
+        nut.add_on_delete(id.into(), OnDelete::Simple(closure));
     })
 }
 
-pub(crate) fn register_domained_on_delete<A, F>(
-    id: ActivityId<A>,
-    f: F,
-) -> Result<(), std::cell::BorrowMutError>
+pub(crate) fn register_domained_on_delete<A, F>(id: ActivityId<A>, f: F)
 where
     A: Activity,
     F: FnOnce(A, &mut DomainState) + 'static,
@@ -279,10 +285,8 @@ where
                 .expect("missing domain");
             f(*activity, domain);
         });
-        nut.activities
-            .try_borrow_mut()?
-            .add_domained_on_delete(id.into(), closure);
-        Ok(())
+        let subscription = OnDelete::WithDomain(closure);
+        nut.add_on_delete(id.into(), subscription);
     })
 }
 

@@ -96,14 +96,14 @@ impl<A: Activity> ActivityId<A> {
     where
         F: FnOnce(A) + 'static,
     {
-        crate::nut::register_on_delete(*self, f).expect("Cannot set on_delete now");
+        crate::nut::register_on_delete(*self, f);
     }
     /// Same as `on_delete` but with domain access in closure
     pub fn on_delete_domained<F>(&self, f: F)
     where
         F: FnOnce(A, &mut DomainState) + 'static,
     {
-        crate::nut::register_domained_on_delete(*self, f).expect("Cannot set on_delete now");
+        crate::nut::register_domained_on_delete(*self, f);
     }
 
     /// Registers a callback closure on an activity with a specific topic to listen to.

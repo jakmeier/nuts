@@ -2,11 +2,9 @@
 //! To still be able to add new activities and subscriptions during that time, temporary
 //! structures are used to buffer additions. Theses are then merged in a deferred event.
 
-use std::any::Any;
-
 use crate::{
-    nut::iac::managed_state::ManagedState, Activity, ActivityContainer, ActivityId, DomainId,
-    LifecycleStatus, UncheckedActivityId,
+    nut::iac::managed_state::ManagedState, nut::iac::subscription::OnDelete, Activity,
+    ActivityContainer, ActivityId, DomainId, LifecycleStatus, UncheckedActivityId,
 };
 
 #[derive(Default)]
@@ -45,21 +43,9 @@ impl InchoateActivityContainer {
         id.index -= self.offset;
         self.activities.set_status(id, status)
     }
-    pub(crate) fn add_on_delete(
-        &mut self,
-        mut id: UncheckedActivityId,
-        f: Box<dyn FnOnce(Box<dyn Any>)>,
-    ) {
+    pub(crate) fn add_on_delete(&mut self, mut id: UncheckedActivityId, f: OnDelete) {
         id.index -= self.offset;
         self.activities.add_on_delete(id, f)
-    }
-    pub(crate) fn add_domained_on_delete(
-        &mut self,
-        mut id: UncheckedActivityId,
-        f: Box<dyn FnOnce(Box<dyn Any>, &mut ManagedState)>,
-    ) {
-        id.index -= self.offset;
-        self.activities.add_domained_on_delete(id, f)
     }
     pub(crate) fn delete(&mut self, mut id: UncheckedActivityId, managed_state: &mut ManagedState) {
         id.index -= self.offset;

@@ -1,4 +1,5 @@
 use super::*;
+use crate::nut::iac::subscription::OnDelete;
 
 /// A collection of heterogenous Activities
 ///
@@ -9,12 +10,6 @@ pub(crate) struct ActivityContainer {
     data: Vec<Option<Box<dyn Any>>>,
     active: Vec<LifecycleStatus>,
     on_delete: Vec<OnDelete>,
-}
-
-enum OnDelete {
-    None,
-    Simple(Box<dyn FnOnce(Box<dyn Any>)>),
-    WithDomain(Box<dyn FnOnce(Box<dyn Any>, &mut ManagedState)>),
 }
 
 /// Handlers stored per Activity
@@ -42,19 +37,8 @@ impl ActivityContainer {
     pub(crate) fn set_status(&mut self, id: UncheckedActivityId, status: LifecycleStatus) {
         self.active[id.index] = status
     }
-    pub(crate) fn add_on_delete(
-        &mut self,
-        id: UncheckedActivityId,
-        f: Box<dyn FnOnce(Box<dyn Any>)>,
-    ) {
-        self.on_delete[id.index] = OnDelete::Simple(f);
-    }
-    pub(crate) fn add_domained_on_delete(
-        &mut self,
-        id: UncheckedActivityId,
-        f: Box<dyn FnOnce(Box<dyn Any>, &mut ManagedState)>,
-    ) {
-        self.on_delete[id.index] = OnDelete::WithDomain(f);
+    pub(crate) fn add_on_delete(&mut self, id: UncheckedActivityId, f: OnDelete) {
+        self.on_delete[id.index] = f;
     }
     pub(crate) fn delete(&mut self, id: UncheckedActivityId, managed_state: &mut ManagedState) {
         if let Some(activity) = self.data[id.index].take() {

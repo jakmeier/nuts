@@ -208,7 +208,7 @@ fn delete_inchoate_activity_with_subscriber_and_on_delete() {
 
     main.subscribe(move |_, _: &Main| {
         crate::publish(TestForInt(7));
-        let id = crate::new_activity(a.clone());
+        let id = crate::new_domained_activity(a.clone(), &d);
         id.subscribe_domained(|_activity, _domain, _msg: &TestMessage| {
             panic!("Activity should be deleted by now, why is the subscriber called?")
         });
