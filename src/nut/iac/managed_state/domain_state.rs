@@ -1,6 +1,8 @@
 use core::any::{Any, TypeId};
 use std::collections::{hash_map::Entry, HashMap};
 
+use crate::nut::IMPOSSIBLE_ERR_MSG;
+
 /// Stores passive data that can be accessed in event handlers of multiple activities.
 ///
 // @ START-DOC DOMAIN
@@ -33,7 +35,9 @@ impl DomainState {
         let id = TypeId::of::<T>();
         match self.index_map.entry(id) {
             Entry::Occupied(entry) => {
-                *self.objects[*entry.get()].downcast_mut().unwrap() = obj;
+                *self.objects[*entry.get()]
+                    .downcast_mut()
+                    .expect(IMPOSSIBLE_ERR_MSG) = obj;
             }
             Entry::Vacant(entry) => {
                 entry.insert(self.objects.len());

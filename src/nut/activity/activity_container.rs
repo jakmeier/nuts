@@ -12,12 +12,6 @@ pub(crate) struct ActivityContainer {
     on_delete: Vec<OnDelete>,
 }
 
-/// Handlers stored per Activity
-#[derive(Default)]
-pub(crate) struct ActivityHandlerContainer {
-    data: HashMap<usize, Vec<Handler>>,
-}
-
 impl ActivityContainer {
     pub(crate) fn add<A: Activity>(
         &mut self,
@@ -78,25 +72,5 @@ impl<A: Activity> IndexMut<ActivityId<A>> for ActivityContainer {
             .as_mut()
             .expect("Missing activity")
             .as_mut()
-    }
-}
-
-impl ActivityHandlerContainer {
-    pub fn iter(&self) -> impl Iterator<Item = &Handler> {
-        self.data.values().flat_map(|f| f.iter())
-    }
-    pub fn iter_for(&self, id: UncheckedActivityId) -> impl Iterator<Item = &Handler> {
-        self.data.get(&id.index).into_iter().flat_map(|f| f.iter())
-    }
-}
-impl Index<UncheckedActivityId> for ActivityHandlerContainer {
-    type Output = Vec<Handler>;
-    fn index(&self, id: UncheckedActivityId) -> &Self::Output {
-        &self.data[&id.index]
-    }
-}
-impl IndexMut<UncheckedActivityId> for ActivityHandlerContainer {
-    fn index_mut(&mut self, id: UncheckedActivityId) -> &mut Self::Output {
-        self.data.entry(id.index).or_insert_with(Default::default)
     }
 }

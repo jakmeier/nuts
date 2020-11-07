@@ -15,6 +15,7 @@ enum SlotState {
 
 pub(crate) struct Slot(usize);
 
+#[allow(clippy::single_match)]
 impl ResponseTracker {
     pub fn allocate(&mut self) -> Slot {
         for (i, slot) in self.slots.iter_mut().enumerate() {
@@ -65,6 +66,5 @@ impl Future for NutsResponse {
                 }
             }
         })
-        .unwrap()
     }
 }

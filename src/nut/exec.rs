@@ -1,7 +1,8 @@
 use crate::nut::activity::LifecycleChange;
 use crate::nut::iac::publish::{BroadcastInfo, ResponseSlot};
 use crate::nut::Nut;
-use crate::{Topic, UncheckedActivityId};
+use crate::DomainStoreData;
+use crate::UncheckedActivityId;
 
 pub(crate) mod fifo;
 pub(crate) mod inchoate;
@@ -9,18 +10,17 @@ pub(crate) mod inchoate;
 pub(crate) enum Deferred {
     Broadcast(BroadcastInfo),
     BroadcastAwaitingResponse(BroadcastInfo, ResponseSlot),
-    Subscription(Topic, UncheckedActivityId, Handler),
+    Subscription(NewSubscription),
     OnDeleteSubscription(UncheckedActivityId, OnDelete),
     LifecycleChange(LifecycleChange),
-    DomainStore(DomainId, TypeId, Box<dyn Any>),
+    DomainStore(DomainStoreData),
     FlushInchoateActivities,
 }
 use core::sync::atomic::Ordering;
-use std::any::{Any, TypeId};
 
 use super::{
-    iac::{managed_state::DomainId, subscription::OnDelete},
-    Handler, IMPOSSIBLE_ERR_MSG,
+    iac::subscription::{NewSubscription, OnDelete},
+    IMPOSSIBLE_ERR_MSG,
 };
 
 impl Nut {
@@ -43,20 +43,24 @@ impl Nut {
     fn unchecked_catch_up_deferred_to_quiescence(&self) {
         while let Some(deferred) = self.deferred_events.pop() {
             #[cfg(debug_assertions)]
-            let debug_message = format!("Executing:{:?}", deferred);
+            let debug_message = format!("Executing: {:?}", deferred);
+            debug_print!("{}", debug_message);
 
             #[cfg(not(debug_assertions))]
             self.exec_deferred(deferred);
 
+            // Unfortunately, this currently does not seem to work on the web.
+            // To have good web debugging, the nuts panic hook should be used.
             #[cfg(debug_assertions)]
             if let Err(panic_info) =
                 std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
                     self.exec_deferred(deferred)
                 }))
             {
-                println!(
-                    "Panic ocurred while nuts was executing. {:?}",
-                    debug_message
+                log_print!("Panic ocurred while nuts was executing. {}", debug_message);
+                log_print!(
+                    "Activity executing right now: {:?}",
+                    self.active_activity_name.get()
                 );
                 std::panic::resume_unwind(panic_info);
             }
@@ -67,10 +71,10 @@ impl Nut {
             Deferred::Broadcast(b) => self.unchecked_broadcast(b),
             Deferred::BroadcastAwaitingResponse(b, slot) => {
                 self.unchecked_broadcast(b);
-                Nut::with_response_tracker_mut(|rt| rt.done(&slot)).expect(IMPOSSIBLE_ERR_MSG);
+                Nut::with_response_tracker_mut(|rt| rt.done(&slot));
             }
-            Deferred::Subscription(topic, id, handler) => {
-                self.subscriptions.force_push_closure(topic, id, handler);
+            Deferred::Subscription(sub) => {
+                self.subscriptions.exec_new_subscription(sub);
             }
             Deferred::OnDeleteSubscription(id, sub) => {
                 self.activities
@@ -79,13 +83,7 @@ impl Nut {
                     .add_on_delete(id, sub);
             }
             Deferred::LifecycleChange(lc) => self.unchecked_lifecycle_change(&lc),
-            Deferred::DomainStore(domain, id, obj) => self
-                .managed_state
-                .try_borrow_mut()
-                .expect(IMPOSSIBLE_ERR_MSG)
-                .get_mut(domain)
-                .expect("Domain ID invalid")
-                .store_unchecked(id, obj),
+            Deferred::DomainStore(d) => self.exec_domain_store(d),
             Deferred::FlushInchoateActivities => self
                 .inchoate_activities
                 .try_borrow_mut()
@@ -112,10 +110,10 @@ impl std::fmt::Debug for Deferred {
         match self {
             Self::Broadcast(b) => write!(f, "Broadcasting {:?}", b),
             Self::BroadcastAwaitingResponse(b, _rs) => write!(f, "Broadcasting {:?}", b),
-            Self::Subscription(_, _, _) => write!(f, "Adding new subscription"),
+            Self::Subscription(sub) => write!(f, "{:?}", sub),
             Self::OnDeleteSubscription(_, _) => write!(f, "Adding new on delete listener"),
             Self::LifecycleChange(lc) => write!(f, "{:?}", lc),
-            Self::DomainStore(_domain, typ, _data) => write!(f, "Storing {:?} to the domain", typ),
+            Self::DomainStore(ds) => write!(f, "{:?}", ds),
             Self::FlushInchoateActivities => write!(f, "Adding new activities previously deferred"),
         }
     }

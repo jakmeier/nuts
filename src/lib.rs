@@ -27,20 +27,22 @@
 // code quality
 #![forbid(unsafe_code)]
 #![deny(clippy::mem_forget)]
-#![warn(clippy::unwrap_used)]
-#![warn(clippy::needless_borrow)]
+// #![forbid(clippy::print_stdout)]
+#![deny(clippy::print_stdout)]
 #![warn(clippy::mutex_integer)]
+#![warn(clippy::needless_borrow)]
 #![warn(clippy::needless_pass_by_value)]
+#![warn(clippy::unwrap_used)]
 // docs
 #![warn(missing_docs)]
 #![warn(clippy::doc_markdown)]
 #![warn(clippy::missing_errors_doc)]
-
-mod nut;
+#![allow(clippy::needless_doctest_main)]
 
 #[macro_use]
-#[cfg(all(feature = "web-debug", debug_assertions))]
-mod debug;
+pub(crate) mod debug;
+
+mod nut;
 
 pub use crate::nut::iac::managed_state::{DefaultDomain, DomainEnumeration, DomainState};
 use core::any::Any;
@@ -209,4 +211,31 @@ pub fn publish<A: Any>(a: A) {
 /// message has been published and all subscribers have finished processing it.
 pub async fn publish_awaiting_response<A: Any>(a: A) {
     nut::publish_custom_and_await(a).await;
+}
+
+#[cfg(debug_assertions)]
+/// Read some information about currently processing activities.
+/// This should be called inside a panic hook.
+///
+/// This function is only available in debug mode as a runtime cost is associated with recording the necessary data at all times.
+/// The correct flag for conditional compilation is `#[cfg(debug_assertions)]`.
+///
+/// # Example
+/// ```
+/// fn add_nuts_hook() {
+/// #[cfg(debug_assertions)]
+/// let previous_hook = std::panic::take_hook();
+///     std::panic::set_hook(Box::new(move |panic_info| {
+///         let nuts_info = nuts::panic_info();
+///         #[cfg(features = "web-debug")]
+///         web_sys::console::error_1(&nuts_info.into());
+///         #[cfg(not(features = "web-debug"))]
+///         eprintln!("{}", nuts_info);
+///         previous_hook(panic_info)
+///     }));
+/// }
+/// ```
+pub fn panic_info() -> String {
+    nut::nuts_panic_info()
+        .unwrap_or_else(|| "NUTS panic hook: Failed to read panic info.".to_owned())
 }

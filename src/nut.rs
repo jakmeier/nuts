@@ -10,22 +10,22 @@ pub(crate) mod iac;
 #[cfg(test)]
 mod test;
 
-use crate::nut::exec::inchoate::InchoateActivityContainer;
 use crate::nut::exec::Deferred;
 use crate::nut::iac::subscription::OnDelete;
 use crate::*;
+use crate::{debug::DebugTypeName, nut::exec::inchoate::InchoateActivityContainer};
 use core::any::Any;
 use core::sync::atomic::AtomicBool;
 use exec::fifo::ThreadLocalFifo;
 use iac::managed_state::*;
-use std::{any::TypeId, cell::RefCell};
+use std::cell::RefCell;
 
 use self::iac::{publish::ResponseTracker, subscription::Subscriptions};
 
 thread_local!(static NUT: Nut = Nut::new());
 
 pub(crate) const IMPOSSIBLE_ERR_MSG: &str =
-    "Bug in nuts. It should be impossible to trigger through any combinations of library calls.";
+    "Bug in nuts. It should be impossible to trigger this panic through any combinations of library calls.";
 
 /// A nut stores thread-local state and provides an easy interface to access it.
 ///
@@ -55,10 +55,14 @@ struct Nut {
     /// A flag that marks if a broadcast is currently on-going
     executing: AtomicBool,
     /// When executing a broadcast, `activities` and `managed_state` is not available.
-    /// To still be able to add new activities and subscriptions during that time, temporary
+    /// To still be able to add new activities during that time, temporary
     /// structures are used to buffer additions. Theses are then merged in a deferred event.
+    /// (Note: Adding subscriptions does not require additional structure because they will
+    /// be queued and only executed after the activity is available anyway)
     inchoate_activities: RefCell<InchoateActivityContainer>,
-    // inchoate_subscriptions: RefCell<>,
+    /// For debugging messages
+    #[cfg(debug_assertions)]
+    active_activity_name: std::cell::Cell<Option<DebugTypeName>>,
 }
 
 /// A method that can be called by the `ActivityManager`.
@@ -72,14 +76,6 @@ impl Nut {
     fn quiescent(&self) -> bool {
         !self.executing.load(std::sync::atomic::Ordering::Relaxed)
     }
-    fn push_closure<A: 'static>(&self, topic: Topic, id: ActivityId<A>, closure: Handler) {
-        if self.quiescent() {
-            self.subscriptions.force_push_closure(topic, id, closure);
-        } else {
-            self.deferred_events
-                .push(Deferred::Subscription(topic, id.into(), closure));
-        }
-    }
     fn add_on_delete(&self, id: UncheckedActivityId, subscription: OnDelete) {
         if self.quiescent() {
             self.activities
@@ -91,12 +87,13 @@ impl Nut {
                 .push(Deferred::OnDeleteSubscription(id, subscription))
         }
     }
-    pub(crate) fn with_response_tracker_mut<T>(
-        f: impl FnOnce(&mut ResponseTracker) -> T,
-    ) -> Result<T, std::cell::BorrowMutError> {
+    pub(crate) fn with_response_tracker_mut<T>(f: impl FnOnce(&mut ResponseTracker) -> T) -> T {
         NUT.with(|nut| {
-            let mut response_tracker = nut.response_tracker.try_borrow_mut()?;
-            Ok(f(&mut *response_tracker))
+            let mut response_tracker = nut
+                .response_tracker
+                .try_borrow_mut()
+                .expect(IMPOSSIBLE_ERR_MSG);
+            f(&mut *response_tracker)
         })
     }
 }
@@ -306,8 +303,24 @@ where
             let storage = managed_state.get_mut(id).expect("No domain");
             storage.store(data);
         } else {
-            let event = Deferred::DomainStore(id, TypeId::of::<T>(), Box::new(data));
+            let event = Deferred::DomainStore(DomainStoreData::new(id, data));
             nut.deferred_events.push(event);
         }
     })
+}
+
+#[cfg(debug_assertions)]
+pub(crate) fn nuts_panic_info() -> Option<String> {
+    NUT.try_with(|nut| {
+        let mut info = String::new();
+        info.push_str("NUTS panic hook: Panicked while ");
+        if let Some(activity) = nut.active_activity_name.get() {
+            info.push_str(activity.0);
+        } else {
+            info.push_str("no");
+        }
+        info.push_str(" activity was active.\n");
+        info
+    })
+    .ok()
 }

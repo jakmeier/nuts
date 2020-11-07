@@ -24,7 +24,7 @@ impl Nut {
     }
     pub(crate) fn publish_and_await<MSG: Any>(&self, msg: MSG) -> NutsResponse {
         let broadcast = BroadcastInfo::global(msg, Topic::message::<MSG>());
-        let ticket = Nut::with_response_tracker_mut(|rt| rt.allocate()).unwrap();
+        let ticket = Nut::with_response_tracker_mut(|rt| rt.allocate());
         let future = NutsResponse::new(&ticket);
         self.deferred_events
             .push(nut::exec::Deferred::BroadcastAwaitingResponse(

@@ -4,6 +4,7 @@
 
 mod domain_id;
 mod domain_state;
+mod domain_store;
 
 use crate::nut::activity::Activity;
 use crate::nut::activity::ActivityContainer;
@@ -13,6 +14,7 @@ use crate::nut::Handler;
 use core::any::Any;
 pub use domain_id::*;
 pub use domain_state::*;
+pub(crate) use domain_store::*;
 
 #[derive(Default)]
 pub(crate) struct ManagedState {
