@@ -2,10 +2,7 @@
 //! To still be able to add new activities and subscriptions during that time, temporary
 //! structures are used to buffer additions. Theses are then merged in a deferred event.
 
-use crate::{
-    nut::iac::managed_state::ManagedState, nut::iac::subscription::OnDelete, Activity,
-    ActivityContainer, ActivityId, DomainId, LifecycleStatus, UncheckedActivityId,
-};
+use crate::{Activity, ActivityContainer, ActivityId, DomainId, LifecycleStatus};
 
 #[derive(Default)]
 pub(crate) struct InchoateActivityContainer {
@@ -34,24 +31,5 @@ impl InchoateActivityContainer {
         let mut aid = self.activities.add(a, domain, status);
         aid.id.index += self.offset;
         aid
-    }
-    pub(crate) fn status(&self, mut id: UncheckedActivityId) -> LifecycleStatus {
-        id.index -= self.offset;
-        self.activities.status(id)
-    }
-    pub(crate) fn set_status(&mut self, mut id: UncheckedActivityId, status: LifecycleStatus) {
-        id.index -= self.offset;
-        self.activities.set_status(id, status)
-    }
-    pub(crate) fn add_on_delete(&mut self, mut id: UncheckedActivityId, f: OnDelete) {
-        id.index -= self.offset;
-        self.activities.add_on_delete(id, f)
-    }
-    pub(crate) fn delete(&mut self, mut id: UncheckedActivityId, managed_state: &mut ManagedState) {
-        id.index -= self.offset;
-        self.activities.delete(id, managed_state)
-    }
-    pub(crate) fn len(&self) -> usize {
-        self.activities.len()
     }
 }

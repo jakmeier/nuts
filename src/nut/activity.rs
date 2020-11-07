@@ -260,7 +260,7 @@ impl<A: Activity> ActivityId<A> {
     /// Changes the lifecycle status of the activity
     ///
     /// # Panics
-    /// If status is set to Deleted more than once
+    /// If status is set to something other than Deleted after it has been Deleted
     pub fn set_status(&self, status: LifecycleStatus) {
         crate::nut::set_status((*self).into(), status);
     }
@@ -270,7 +270,7 @@ impl UncheckedActivityId {
     /// Changes the lifecycle status of the activity
     ///
     /// # Panics
-    /// If status is set to Deleted more than once
+    /// If status is set to something other than Deleted after it has been Deleted
     pub fn set_status(&self, status: LifecycleStatus) {
         crate::nut::set_status(*self, status);
     }

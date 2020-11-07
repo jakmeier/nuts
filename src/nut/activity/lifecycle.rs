@@ -64,6 +64,11 @@ impl Nut {
             .expect(IMPOSSIBLE_ERR_MSG)
             .status(lifecycle_change.activity);
         if before != lifecycle_change.status {
+            assert_ne!(
+                before,
+                LifecycleStatus::Deleted,
+                "Attempted to set activity status after it has been deleted."
+            );
             self.activities
                 .try_borrow_mut()
                 .expect(IMPOSSIBLE_ERR_MSG)
