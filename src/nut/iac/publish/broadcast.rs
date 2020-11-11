@@ -49,6 +49,7 @@ impl Nut {
                         let f = &sub.handler;
                         f(&mut self.activities.borrow_mut(), &mut managed_state);
                     }
+                    #[cfg(debug_assertions)]
                     self.active_activity_name.set(None);
                 }
                 BroadcastAddress::Local(id) => {
