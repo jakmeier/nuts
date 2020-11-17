@@ -11,6 +11,7 @@ use crate::nut::activity::ActivityContainer;
 use crate::nut::activity::ActivityId;
 use crate::nut::iac::filter::SubscriptionFilter;
 use crate::nut::Handler;
+use crate::nut::IMPOSSIBLE_ERR_MSG;
 use core::any::Any;
 pub use domain_id::*;
 pub use domain_state::*;
@@ -45,19 +46,19 @@ impl ManagedState {
         let msg = self
             .broadcast
             .as_mut()
-            .expect("Bug: nothing broadcasted")
+            .expect(IMPOSSIBLE_ERR_MSG)
             .downcast_mut()
-            .expect("Bug: wrong message broadcasted");
+            .expect(IMPOSSIBLE_ERR_MSG);
         msg
     }
     fn current_broadcast_and_domain<A: Any>(&mut self, id: DomainId) -> (&mut A, &mut DomainState) {
         let msg: &mut A = self
             .broadcast
             .as_mut()
-            .expect("Bug: nothing broadcasted")
+            .expect(IMPOSSIBLE_ERR_MSG)
             .downcast_mut()
-            .expect("Bug: wrong message broadcasted");
-        let i = id.index().expect("Activity has no domain");
+            .expect(IMPOSSIBLE_ERR_MSG);
+        let i = id.index().expect(IMPOSSIBLE_ERR_MSG);
         let domain = &mut self.domains[i];
         (msg, domain)
     }
@@ -65,9 +66,9 @@ impl ManagedState {
         let msg = self
             .broadcast
             .take()
-            .expect("Bug: nothing broadcasted")
+            .expect(IMPOSSIBLE_ERR_MSG)
             .downcast()
-            .expect("Bug: wrong message broadcasted");
+            .expect(IMPOSSIBLE_ERR_MSG);
         msg
     }
     fn take_current_broadcast_and_borrow_domain<A: Any>(
@@ -77,12 +78,56 @@ impl ManagedState {
         let msg = self
             .broadcast
             .take()
-            .expect("Bug: nothing broadcasted")
+            .expect(IMPOSSIBLE_ERR_MSG)
             .downcast()
-            .expect("Bug: wrong message broadcasted");
+            .expect(IMPOSSIBLE_ERR_MSG);
         let i = id.index().expect("Activity has no domain");
         let domain = &mut self.domains[i];
         (msg, domain)
+    }
+
+    pub(crate) fn pack_closure_no_payload<A, F>(
+        f: F,
+        index: ActivityId<A>,
+        filter: SubscriptionFilter,
+    ) -> Handler
+    where
+        A: Activity,
+        F: Fn(&mut A) + 'static,
+    {
+        Box::new(
+            move |activities: &mut ActivityContainer, _: &mut ManagedState| {
+                if activities.filter(index, &filter) {
+                    let a = activities[index]
+                        .downcast_mut::<A>()
+                        .expect(IMPOSSIBLE_ERR_MSG);
+                    f(a)
+                }
+            },
+        )
+    }
+
+    pub(crate) fn pack_closure_domained_no_payload<A, F>(
+        f: F,
+        index: ActivityId<A>,
+        filter: SubscriptionFilter,
+    ) -> Handler
+    where
+        A: Activity,
+        F: Fn(&mut A, &mut DomainState) + 'static,
+    {
+        Box::new(
+            move |activities: &mut ActivityContainer, managed_state: &mut ManagedState| {
+                if activities.filter(index, &filter) {
+                    let a = activities[index]
+                        .downcast_mut::<A>()
+                        .expect(IMPOSSIBLE_ERR_MSG);
+                    let domain = &mut managed_state.domains
+                        [index.domain_index.index().expect(IMPOSSIBLE_ERR_MSG)];
+                    f(a, domain)
+                }
+            },
+        )
     }
 
     pub(crate) fn pack_closure<A, F, MSG>(
@@ -100,7 +145,7 @@ impl ManagedState {
                 if activities.filter(index, &filter) {
                     let a = activities[index]
                         .downcast_mut::<A>()
-                        .expect("Wrong activity"); // deleted and replaced?
+                        .expect(IMPOSSIBLE_ERR_MSG);
                     let msg = managed_state.current_broadcast();
                     f(a, msg)
                 }
@@ -122,7 +167,7 @@ impl ManagedState {
                 if activities.filter(index, &filter) {
                     let a = activities[index]
                         .downcast_mut::<A>()
-                        .expect("Wrong activity"); // deleted and replaced?
+                        .expect(IMPOSSIBLE_ERR_MSG);
                     let msg = managed_state.current_broadcast();
                     f(a, msg)
                 }
@@ -144,7 +189,7 @@ impl ManagedState {
                 if activities.filter(index, &filter) {
                     let a = activities[index]
                         .downcast_mut::<A>()
-                        .expect("Wrong activity"); // deleted and replaced?
+                        .expect(IMPOSSIBLE_ERR_MSG);
                     let msg = managed_state.take_current_broadcast();
                     f(a, *msg)
                 }
@@ -166,7 +211,7 @@ impl ManagedState {
                 if activities.filter(index, &filter) {
                     let a = activities[index]
                         .downcast_mut::<A>()
-                        .expect("Wrong activity"); // deleted and replaced?
+                        .expect(IMPOSSIBLE_ERR_MSG);
                     let (msg, domain) =
                         managed_state.current_broadcast_and_domain(index.domain_index);
                     f(a, domain, msg)
@@ -189,7 +234,7 @@ impl ManagedState {
                 if activities.filter(index, &filter) {
                     let a = activities[index]
                         .downcast_mut::<A>()
-                        .expect("Wrong activity"); // deleted and replaced?
+                        .expect(IMPOSSIBLE_ERR_MSG);
                     let (msg, domain) =
                         managed_state.current_broadcast_and_domain(index.domain_index);
                     f(a, domain, msg)
@@ -212,7 +257,7 @@ impl ManagedState {
                 if activities.filter(index, &filter) {
                     let a = activities[index]
                         .downcast_mut::<A>()
-                        .expect("Wrong activity"); // deleted and replaced?
+                        .expect(IMPOSSIBLE_ERR_MSG);
                     let (msg, domain) =
                         managed_state.take_current_broadcast_and_borrow_domain(index.domain_index);
                     f(a, domain, *msg)

@@ -27,7 +27,6 @@
 // code quality
 #![forbid(unsafe_code)]
 #![deny(clippy::mem_forget)]
-// #![forbid(clippy::print_stdout)]
 #![deny(clippy::print_stdout)]
 #![warn(clippy::mutex_integer)]
 #![warn(clippy::needless_borrow)]
@@ -42,18 +41,17 @@
 #[macro_use]
 pub(crate) mod debug;
 
+mod capsule;
 mod nut;
 
 pub use crate::nut::iac::managed_state::{DefaultDomain, DomainEnumeration, DomainState};
+pub use capsule::Capsule;
 use core::any::Any;
 pub use nut::activity::*;
 pub use nut::iac::filter::*;
 
 use nut::iac::managed_state::*;
 use nut::iac::topic::*;
-
-/// A method on an activity. Can be registered dynamically on activities at runtime.
-pub struct Method<ACTIVITY>(dyn Fn(&mut ACTIVITY, Option<&mut DomainState>));
 
 /// Consumes a struct and registers it as an Activity.
 ///

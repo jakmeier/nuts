@@ -263,7 +263,6 @@ fn on_enter_and_leave_and_delete_for_inchoate_activity() {
     assert_eq!(counter.get(), 11);
 
     let aid = aid_slot_clone.get().unwrap();
-    
     aid.set_status(LifecycleStatus::Inactive);
     assert_eq!(counter.get(), 21,);
 
@@ -272,4 +271,29 @@ fn on_enter_and_leave_and_delete_for_inchoate_activity() {
 
     aid.set_status(LifecycleStatus::Deleted);
     assert_eq!(counter.get(), 132,);
+}
+
+#[test]
+fn encapsulate() {
+    let main = crate::new_activity(());
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let capsule_slot: Rc<Cell<Option<Capsule>>> = Default::default();
+    let capsule_slot_clone = capsule_slot.clone();
+    main.subscribe(move |_, _: &Main| {
+        let id = crate::new_activity(a.clone());
+        let capsule = id.encapsulate(|activity: &mut TestActivity| {
+            activity.inc(1);
+        });
+        capsule_slot_clone.set(Some(capsule));
+    });
+
+    crate::publish(Main);
+
+    assert_eq!(counter.get(), 0, "Closure called before calling capsule");
+    let capsule = capsule_slot.take().expect("Capsule not created");
+    capsule.execute().expect("Failed executing capsule");
+    assert_eq!(counter.get(), 1);
+    capsule.execute().expect("Failed executing capsule");
+    assert_eq!(counter.get(), 2);
 }

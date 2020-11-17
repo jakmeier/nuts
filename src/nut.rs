@@ -67,7 +67,7 @@ struct Nut {
 
 /// A method that can be called by the `ActivityManager`.
 /// These handlers are created by the library and not part of the public interface.
-type Handler = Box<dyn Fn(&mut ActivityContainer, &mut ManagedState)>;
+pub(crate) type Handler = Box<dyn Fn(&mut ActivityContainer, &mut ManagedState)>;
 
 impl Nut {
     fn new() -> Self {
@@ -194,7 +194,7 @@ pub(crate) fn register_no_payload<A, F>(
     F: Fn(&mut A) + 'static,
 {
     NUT.with(|nut| {
-        let closure = ManagedState::pack_closure::<_, _, ()>(move |a, ()| f(a), id, filter);
+        let closure = ManagedState::pack_closure_no_payload(f, id, filter);
         nut.push_closure(topic, id, closure);
     });
 }
@@ -250,7 +250,7 @@ pub(crate) fn register_domained_no_payload<A, F>(
     F: Fn(&mut A, &mut DomainState) + 'static,
 {
     NUT.with(|nut| {
-        let closure = ManagedState::pack_domained_closure(move |a, d, ()| f(a, d), id, filter);
+        let closure = ManagedState::pack_closure_domained_no_payload(f, id, filter);
         nut.push_closure(topic, id, closure);
     });
 }
@@ -323,4 +323,35 @@ pub(crate) fn nuts_panic_info() -> Option<String> {
         info
     })
     .ok()
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum ExecError {
+    NutsAlreadyActive,
+}
+
+pub(crate) fn try_exec_single_handler(
+    handler: &Handler,
+    type_name: &DebugTypeName,
+) -> Result<(), ExecError> {
+    NUT.with(|nut| {
+        if nut
+            .executing
+            .swap(true, std::sync::atomic::Ordering::Relaxed)
+        {
+            return Err(ExecError::NutsAlreadyActive);
+        }
+        #[cfg(debug_assertions)]
+        nut.active_activity_name.set(Some(*type_name));
+        let f = &handler;
+        f(
+            &mut nut.activities.borrow_mut(),
+            &mut nut.managed_state.borrow_mut(),
+        );
+        #[cfg(debug_assertions)]
+        nut.active_activity_name.set(None);
+        nut.executing
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        Ok(())
+    })
 }
