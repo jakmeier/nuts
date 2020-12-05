@@ -41,11 +41,9 @@
 #[macro_use]
 pub(crate) mod debug;
 
-mod capsule;
 mod nut;
 
 pub use crate::nut::iac::managed_state::{DefaultDomain, DomainEnumeration, DomainState};
-pub use capsule::Capsule;
 use core::any::Any;
 pub use nut::activity::*;
 pub use nut::iac::filter::*;

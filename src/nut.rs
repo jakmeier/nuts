@@ -328,34 +328,3 @@ pub(crate) fn nuts_panic_info() -> Option<String> {
     })
     .ok()
 }
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub enum ExecError {
-    NutsAlreadyActive,
-}
-
-pub(crate) fn try_exec_single_handler(
-    handler: &Handler,
-    type_name: &DebugTypeName,
-) -> Result<(), ExecError> {
-    NUT.with(|nut| {
-        if nut
-            .executing
-            .swap(true, std::sync::atomic::Ordering::Relaxed)
-        {
-            return Err(ExecError::NutsAlreadyActive);
-        }
-        #[cfg(debug_assertions)]
-        nut.active_activity_name.set(Some(*type_name));
-        let f = &handler;
-        f(
-            &mut nut.activities.borrow_mut(),
-            &mut nut.managed_state.borrow_mut(),
-        );
-        #[cfg(debug_assertions)]
-        nut.active_activity_name.set(None);
-        nut.executing
-            .store(false, std::sync::atomic::Ordering::Relaxed);
-        Ok(())
-    })
-}

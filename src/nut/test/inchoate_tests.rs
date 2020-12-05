@@ -274,31 +274,6 @@ fn on_enter_and_leave_and_delete_for_inchoate_activity() {
 }
 
 #[test]
-fn encapsulate() {
-    let main = crate::new_activity(());
-    let a = TestActivity::new();
-    let counter = a.shared_counter_ref();
-    let capsule_slot: Rc<Cell<Option<Capsule>>> = Default::default();
-    let capsule_slot_clone = capsule_slot.clone();
-    main.subscribe(move |_, _: &Main| {
-        let id = crate::new_activity(a.clone());
-        let capsule = id.encapsulate(|activity: &mut TestActivity| {
-            activity.inc(1);
-        });
-        capsule_slot_clone.set(Some(capsule));
-    });
-
-    crate::publish(Main);
-
-    assert_eq!(counter.get(), 0, "Closure called before calling capsule");
-    let capsule = capsule_slot.take().expect("Capsule not created");
-    capsule.execute().expect("Failed executing capsule");
-    assert_eq!(counter.get(), 1);
-    capsule.execute().expect("Failed executing capsule");
-    assert_eq!(counter.get(), 2);
-}
-
-#[test]
 fn create_inchoate_domained_activity_and_subscribe_and_publish_privately() {
     let main = crate::new_activity(());
     let a = TestActivity::new();

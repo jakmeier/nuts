@@ -1,5 +1,4 @@
 mod base_tests;
-mod capsule_tests;
 mod domain_tests;
 mod inchoate_tests;
 mod lifecycle_tests;
