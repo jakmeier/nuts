@@ -7,9 +7,6 @@ pub(crate) mod activity;
 pub(crate) mod exec;
 pub(crate) mod iac;
 
-#[cfg(test)]
-mod test;
-
 use crate::nut::exec::Deferred;
 use crate::nut::iac::subscription::OnDelete;
 use crate::*;

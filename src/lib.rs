@@ -43,6 +43,9 @@ pub(crate) mod debug;
 
 mod nut;
 
+#[cfg(test)]
+mod test;
+
 pub use crate::nut::iac::managed_state::{DefaultDomain, DomainEnumeration, DomainState};
 use core::any::Any;
 pub use nut::activity::*;
