@@ -72,12 +72,13 @@ impl GameState {
     }
 }
 
-use stdweb::js;
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::JsCast;
 fn set_timer() {
-    js! {
-        setInterval(
-            @{||nuts::publish(CollectEvent)},
-            5000
-        )
-    }
+    let cb = Closure::wrap(Box::new(|| nuts::publish(CollectEvent)) as Box<dyn FnMut()>);
+    web_sys::window()
+        .unwrap()
+        .set_interval_with_callback_and_timeout_and_arguments_0(cb.as_ref().unchecked_ref(), 3000);
+
+    cb.forget();
 }
