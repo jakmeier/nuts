@@ -17,7 +17,10 @@ use exec::fifo::ThreadLocalFifo;
 use iac::managed_state::*;
 use std::cell::RefCell;
 
-use self::iac::{publish::ResponseTracker, subscription::Subscriptions};
+use self::iac::{
+    publish::{BroadcastInfo, ResponseTracker},
+    subscription::Subscriptions,
+};
 
 thread_local!(static NUT: Nut = Nut::new());
 
@@ -135,12 +138,27 @@ where
     })
 }
 
-pub(crate) fn publish_custom<A: Any>(a: A) {
-    NUT.with(|nut| nut.publish(a))
+pub(crate) fn publish_custom<MSG: Any>(a: MSG) {
+    NUT.with(|nut| nut.broadcast(BroadcastInfo::global(a, Topic::public_message::<MSG>())))
 }
 
 pub(crate) fn send_custom<RECV: Any, MSG: Any>(a: MSG) {
-    NUT.with(|nut| nut.send_private::<RECV, MSG>(a))
+    NUT.with(|nut| {
+        nut.broadcast(BroadcastInfo::local_by_type::<RECV, MSG>(
+            a,
+            Topic::private_message::<MSG>(),
+        ))
+    })
+}
+
+pub(crate) fn send_custom_by_id<MSG: Any>(msg: MSG, id: UncheckedActivityId) {
+    NUT.with(|nut| {
+        nut.broadcast(BroadcastInfo::local(
+            msg,
+            id,
+            Topic::private_message::<MSG>(),
+        ))
+    })
 }
 
 pub(crate) async fn publish_custom_and_await<A: Any>(a: A) {

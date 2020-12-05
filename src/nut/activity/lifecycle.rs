@@ -1,5 +1,5 @@
 use super::*;
-use crate::nut::{Nut, IMPOSSIBLE_ERR_MSG};
+use crate::nut::{iac::publish::BroadcastInfo, Nut, IMPOSSIBLE_ERR_MSG};
 
 // @ START-DOC ACTIVITY_LIFECYCLE
 /// Each activity has a lifecycle status that can be changed using [`set_status`](struct.ActivityId.html#method.set_status).
@@ -74,9 +74,17 @@ impl Nut {
                 .expect(IMPOSSIBLE_ERR_MSG)
                 .set_status(lifecycle_change.activity, lifecycle_change.status);
             if !before.is_active() && lifecycle_change.status.is_active() {
-                self.publish_local(lifecycle_change.activity, Topic::enter(), ());
+                self.broadcast(BroadcastInfo::local(
+                    (),
+                    lifecycle_change.activity,
+                    Topic::enter(),
+                ));
             } else if before.is_active() && !lifecycle_change.status.is_active() {
-                self.publish_local(lifecycle_change.activity, Topic::leave(), ());
+                self.broadcast(BroadcastInfo::local(
+                    (),
+                    lifecycle_change.activity,
+                    Topic::leave(),
+                ));
             }
         }
         if lifecycle_change.status == LifecycleStatus::Deleted {

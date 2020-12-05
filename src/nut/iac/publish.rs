@@ -12,19 +12,7 @@ use core::any::Any;
 use self::response::NutsResponse;
 
 impl Nut {
-    pub(crate) fn publish_local<MSG: Any>(&self, id: UncheckedActivityId, topic: Topic, msg: MSG) {
-        let broadcast = BroadcastInfo::local(msg, id, topic);
-        self.deferred_events.push(broadcast.into());
-        self.catch_up_deferred_to_quiescence();
-    }
-    pub(crate) fn publish<MSG: Any>(&self, msg: MSG) {
-        let broadcast = BroadcastInfo::global(msg, Topic::public_message::<MSG>());
-        self.deferred_events.push(broadcast.into());
-        self.catch_up_deferred_to_quiescence();
-    }
-    pub(crate) fn send_private<RECV: Any, MSG: Any>(&self, msg: MSG) {
-        let broadcast =
-            BroadcastInfo::local_by_type::<RECV, MSG>(msg, Topic::private_message::<MSG>());
+    pub(crate) fn broadcast(&self, broadcast: BroadcastInfo) {
         self.deferred_events.push(broadcast.into());
         self.catch_up_deferred_to_quiescence();
     }

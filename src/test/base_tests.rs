@@ -113,6 +113,20 @@ fn private_message() {
 }
 
 #[test]
+fn private_message_by_id() {
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let id = crate::new_activity(a);
+    id.private_channel(|activity, _msg: TestMessageNoClone| {
+        activity.inc(1);
+    });
+    crate::publish(TestMessageNoClone);
+    assert_eq!(0, counter.get()); // Make sure subscription has not been called, yet
+    id.private_message(TestMessageNoClone);
+    assert_eq!(1, counter.get()); // Make sure subscription has been called
+}
+
+#[test]
 fn multi_subscribe_private_message() {
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();

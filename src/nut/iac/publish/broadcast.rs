@@ -1,7 +1,8 @@
 use crate::debug::DebugTypeName;
-use crate::nut::Nut;
+use crate::nut::{iac::subscription::Subscription, Nut};
 use crate::*;
 use core::any::{Any, TypeId};
+use std::cell::RefMut;
 
 pub(crate) struct BroadcastInfo {
     address: BroadcastAddress,
@@ -18,7 +19,7 @@ enum BroadcastAddress {
 }
 
 impl BroadcastInfo {
-    pub(super) fn global<MSG: Any>(msg: MSG, topic: Topic) -> Self {
+    pub(crate) fn global<MSG: Any>(msg: MSG, topic: Topic) -> Self {
         BroadcastInfo {
             address: BroadcastAddress::Global,
             msg: Box::new(msg),
@@ -26,7 +27,7 @@ impl BroadcastInfo {
             type_name: DebugTypeName::new::<MSG>(),
         }
     }
-    pub(super) fn local<MSG: Any>(msg: MSG, id: UncheckedActivityId, topic: Topic) -> Self {
+    pub(crate) fn local<MSG: Any>(msg: MSG, id: UncheckedActivityId, topic: Topic) -> Self {
         BroadcastInfo {
             address: BroadcastAddress::Local(id),
             msg: Box::new(msg),
@@ -34,7 +35,7 @@ impl BroadcastInfo {
             type_name: DebugTypeName::new::<MSG>(),
         }
     }
-    pub(super) fn local_by_type<RECV: Any, MSG: Any>(msg: MSG, topic: Topic) -> Self {
+    pub(crate) fn local_by_type<RECV: Any, MSG: Any>(msg: MSG, topic: Topic) -> Self {
         BroadcastInfo {
             address: BroadcastAddress::LocalByType(TypeId::of::<RECV>()),
             msg: Box::new(msg),
@@ -50,36 +51,21 @@ impl Nut {
         let mut managed_state = self.managed_state.borrow_mut();
         managed_state.set_broadcast(broadcast.msg);
         if let Some(handlers) = self.subscriptions.get().get(&broadcast.topic) {
-            match broadcast.address {
-                BroadcastAddress::Global => {
+            match self.receiver_id(&broadcast.address) {
+                None => {
                     for sub in handlers.shared_subscriptions() {
-                        #[cfg(debug_assertions)]
-                        self.active_activity_name.set(Some(sub.type_name));
-                        let f = &sub.handler;
-                        f(&mut self.activities.borrow_mut(), &mut managed_state);
+                        self.call_subscriber(sub, &mut managed_state);
                     }
                 }
-                BroadcastAddress::Local(id) => {
-                    for sub in handlers.shared_subscriptions_of_single_activity(id) {
-                        #[cfg(debug_assertions)]
-                        self.active_activity_name.set(Some(sub.type_name));
-                        let f = &sub.handler;
-                        f(&mut self.activities.borrow_mut(), &mut managed_state);
-                    }
-                }
-                BroadcastAddress::LocalByType(t) => {
-                    let maybe_id = self.activities.borrow().id_lookup(t);
-                    if let Some(id) = maybe_id {
+                Some(id) => {
+                    if broadcast.topic.unqiue_per_activity() {
                         if let Some(sub) = handlers.private_subscription(id) {
-                            #[cfg(debug_assertions)]
-                            self.active_activity_name.set(Some(sub.type_name));
-                            let f = &sub.handler;
-                            f(&mut self.activities.borrow_mut(), &mut managed_state);
-                        } else {
-                            panic!("Activity doesn't have private listener")
+                            self.call_subscriber(sub, &mut managed_state);
                         }
                     } else {
-                        panic!("Activity doesn't exist")
+                        for sub in handlers.shared_subscriptions_of_single_activity(id) {
+                            self.call_subscriber(sub, &mut managed_state);
+                        }
                     }
                 }
             }
@@ -87,6 +73,19 @@ impl Nut {
             self.active_activity_name.set(None);
         }
         managed_state.clear_broadcast();
+    }
+    fn call_subscriber(&self, sub: &Subscription, managed_state: &mut RefMut<ManagedState>) {
+        #[cfg(debug_assertions)]
+        self.active_activity_name.set(Some(sub.type_name));
+        let f = &sub.handler;
+        f(&mut self.activities.borrow_mut(), managed_state);
+    }
+    fn receiver_id(&self, address: &BroadcastAddress) -> Option<UncheckedActivityId> {
+        match address {
+            BroadcastAddress::Global => None,
+            BroadcastAddress::Local(id) => Some(*id),
+            BroadcastAddress::LocalByType(t) => self.activities.borrow().id_lookup(*t),
+        }
     }
 }
 

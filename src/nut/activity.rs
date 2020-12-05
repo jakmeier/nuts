@@ -18,6 +18,10 @@ use std::ops::{Index, IndexMut};
 /// You don't have to implement the `Activity` trait yourself, it will always be automatically derived if possible.
 ///
 /// To create an activity, simply register the object that should be used as activity, using `nuts::new_activity` or one of its variants.
+///
+/// It is important to understand that Activities are uniquely defined by their type.
+/// You cannot create two activities from the same type. (But you can, for example, create a wrapper type around it.)
+/// This allows activities to be referenced by their type, which mus be know at run-time. reference by their type
 // @ END-DOC ACTIVITY
 pub trait Activity: Any {}
 impl<T: Any> Activity for T {}
@@ -271,6 +275,15 @@ impl<A: Activity> ActivityId<A> {
     pub fn set_status(&self, status: LifecycleStatus) {
         crate::nut::set_status((*self).into(), status);
     }
+
+    /// Publish a message to a specific activity.
+    ///
+    /// If you lack access to an `ActivityId`, use `nuts::send_to()` or `UncheckedActivityId::private_message`.
+    /// Both are equivalent.
+    pub fn private_message<MSG: Any>(&self, msg: MSG) {
+        let id: UncheckedActivityId = (*self).into();
+        id.private_message(msg);
+    }
 }
 
 impl UncheckedActivityId {
@@ -280,6 +293,24 @@ impl UncheckedActivityId {
     /// If status is set to something other than Deleted after it has been Deleted
     pub fn set_status(&self, status: LifecycleStatus) {
         crate::nut::set_status(*self, status);
+    }
+    /// Publish a message to a specific activity.
+    ///
+    /// If you lack access to an `UncheckedActivityId`, use `nuts::send_to()`, it is equivalent.
+    pub fn private_message<A: Any>(&self, msg: A) {
+        nut::send_custom_by_id(msg, *self)
+    }
+    /// A unique number for the activity.
+    /// Can be used for serialization in combination with `forge_from_usize`
+    pub fn as_usize(&self) -> usize {
+        self.index
+    }
+    /// Can be used for deserialization in combination with `as_usize`
+    ///
+    /// If used in any other way, you might experience panics.
+    /// Right now, there should still be no UB but that might change in future versions.
+    pub fn forge_from_usize(index: usize) -> Self {
+        Self { index }
     }
 }
 
