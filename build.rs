@@ -9,6 +9,8 @@ fn main() -> std::io::Result<()> {
     if let Ok(_) = std::env::var("DOCS_RS") {
         return Ok(());
     }
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=README_TEMPLATE.md");
     if let Err(_) = std::env::var("REBUILD_README") {
         return Ok(());
     }
@@ -40,9 +42,6 @@ fn main() -> std::io::Result<()> {
         }
     }
     println!("dictioniary: {:?}", dict);
-
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=README_TEMPLATE.md");
     Ok(())
 }
 

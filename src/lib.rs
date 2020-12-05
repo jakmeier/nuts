@@ -212,24 +212,27 @@ pub async fn publish_awaiting_response<A: Any>(a: A) {
     nut::publish_custom_and_await(a).await;
 }
 
-/// Publish a message to a specific activity.
+/// Publish a message to a specific activity. The same as `id.private_message()` but works without an `ActivityId`.
 ///
 /// The first type parameter must always be specified.
 /// It determines the receiver of the message.
 /// The message is ignored silently if no such activity has been registered or if it has no private channel for this message.
 ///
 /// The second type parameter can usually be deferred by the compiler, it is the type of the message to be sent.
-///
-/// # Example
-/// ```
+/// ### Example
+// @ START-DOC PUBLISH_PRIVATE
+/// ```rust
 /// struct ExampleActivity {}
 /// let id = nuts::new_activity(ExampleActivity {});
+/// // `private_channel` works similar to `subscribe` but it owns the message.
 /// id.private_channel(|_activity, msg: usize| {
 ///     assert_eq!(msg, 7);
-///     // Your code
 /// });
+/// // `send_to` must be used instead of `publish` when using private channels.
+/// // Which activity receives the message is decide by the first type parameter.
 /// nuts::send_to::<ExampleActivity, _>(7usize);
 /// ```
+// @ END-DOC PUBLISH_PRIVATE
 pub fn send_to<RECEIVER: Any, MSG: Any>(msg: MSG) {
     nut::send_custom::<RECEIVER, MSG>(msg)
 }

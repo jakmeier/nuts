@@ -45,6 +45,7 @@ impl Nut {
         while let Some(deferred) = self.deferred_events.pop() {
             #[cfg(debug_assertions)]
             let debug_message = format!("Executing: {:?}", deferred);
+            #[cfg(features="verbose-debug-log")]
             debug_print!("{}", debug_message);
 
             #[cfg(not(debug_assertions))]

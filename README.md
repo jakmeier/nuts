@@ -39,6 +39,10 @@ You don't have to implement the `Activity` trait yourself, it will always be aut
 
 To create an activity, simply register the object that should be used as activity, using `nuts::new_activity` or one of its variants.
 
+It is important to understand that Activities are uniquely defined by their type.
+You cannot create two activities from the same type. (But you can, for example, create a wrapper type around it.)
+This allows activities to be referenced by their type, which mus be know at run-time. reference by their type
+
 ## Publish
 
 Any instance of a struct or primitive can be published, as long as its type is known at compile-time. (The same constraint as for Activities.)
@@ -80,7 +84,7 @@ So far, the code inside the closure is not executed and nothing is printed to th
 
 Note that the first argument of the closure is a mutable reference to the activity object.
 The second argument is a read-only reference to the published message.
-Both types must match exactly or otherwise the closure will either not be accepted by the compiler.
+Both types must match exactly or otherwise the closure will not be accepted by the compiler.
 
 A function with the correct argument types can also be used to subscribe.
 ```rust
@@ -129,32 +133,49 @@ nuts::publish( MyMessage { no: 1 } );
 nuts::publish( MyMessage { no: 2 } );
 ```
 
+## Example: Private Channels
+In what I have shown you so far, all messages have been shared reference and it is sent to all listeners that registered to a specific message type.
+An alternative is to use private channels. A sender can then decide which listening activity will receive the message.
+In that case, the ownership of the message is given to the listener.
+
+```rust
+struct ExampleActivity {}
+let id = nuts::new_activity(ExampleActivity {});
+// `private_channel` works similar to `subscribe` but it owns the message.
+id.private_channel(|_activity, msg: usize| {
+    assert_eq!(msg, 7);
+});
+// `send_to` must be used instead of `publish` when using private channels.
+// Which activity receives the message is decide by the first type parameter.
+nuts::send_to::<ExampleActivity, _>(7usize);
+```
+
 ## Activity Lifecycle
 
-Each activity has a lifecycle status that can be changed using [`set_status`](https://docs.rs/nuts/0.1.1/nuts/struct.ActivityId.html#method.set_status).
+Each activity has a lifecycle status that can be changed using [`set_status`](https://docs.rs/nuts/0.2.0/nuts/struct.ActivityId.html#method.set_status).
 It starts with `LifecycleStatus::Active`.
 In the current version of Nuts, the only other status is `LifecycleStatus::Inactive`.
 
 The inactive status can be used to put activities to sleep temporarily.
 While inactive, the activity will not be notified of events it has subscribed to.
 A subscription filter can been used to change this behavior.
-(See [`subscribe_masked`](https://docs.rs/nuts/0.1.1/nuts/struct.ActivityId.html#method.subscribe_masked))
+(See [`subscribe_masked`](https://docs.rs/nuts/0.2.0/nuts/struct.ActivityId.html#method.subscribe_masked))
 
-If the status of a changes from active to inactive, the activity's [`on_leave`](https://docs.rs/nuts/0.1.1/nuts/struct.ActivityId.html#method.on_leave) and [`on_leave_domained`](https://docs.rs/nuts/0.1.1/nuts/struct.ActivityId.html#method.on_leave_domained) subscriptions will be called.
+If the status of a changes from active to inactive, the activity's [`on_leave`](https://docs.rs/nuts/0.2.0/nuts/struct.ActivityId.html#method.on_leave) and [`on_leave_domained`](https://docs.rs/nuts/0.2.0/nuts/struct.ActivityId.html#method.on_leave_domained) subscriptions will be called.
 
-If the status of a changes from inactive to active, the activity's [`on_enter`](https://docs.rs/nuts/0.1.1/nuts/struct.ActivityId.html#method.on_enter) and [`on_enter_domained`](https://docs.rs/nuts/0.1.1/nuts/struct.ActivityId.html#method.on_enter_domained) subscriptions will be called.
+If the status of a changes from inactive to active, the activity's [`on_enter`](https://docs.rs/nuts/0.2.0/nuts/struct.ActivityId.html#method.on_enter) and [`on_enter_domained`](https://docs.rs/nuts/0.2.0/nuts/struct.ActivityId.html#method.on_enter_domained) subscriptions will be called.
 
 
 ## Domains
 
 
-A Domain stores arbitrary data for sharing between multiple [Activities](https://docs.rs/nuts/0.1.1/nuts/trait.Activity.html).
+A Domain stores arbitrary data for sharing between multiple [Activities](https://docs.rs/nuts/0.2.0/nuts/trait.Activity.html).
 Library users can define the number of domains but each activity can only join one domain.
 
 Domains should only be used when data needs to be shared between multiple activities of the same or different types.
 If data is only used by a single activity, it is usually better to store it in the activity struct itself.
 
-In case only one domain is used, you can also consider to use [`DefaultDomain`](https://docs.rs/nuts/0.1.1/nuts/struct.DefaultDomain.html) instead of creating your own enum.
+In case only one domain is used, you can also consider to use [`DefaultDomain`](https://docs.rs/nuts/0.2.0/nuts/struct.DefaultDomain.html) instead of creating your own enum.
 
 For now, there is no real benefit from using multiple Domains, other than data isolation.
 But there are plans for the future that will schedule Activities in different threads, based on their domain.
@@ -252,13 +273,10 @@ nuts::publish(0usize);
 ```
 
 ## Full Demo Examples
-A simple example using nuts to build a basic clicker game is available in [examples/clicker-game](tree/master/examples/clicker-game). It requires `wasm-pack` installed to install the package and then `npm run start` in the `www` folder can be run to start a server running the game.
+A simple example using nuts to build a basic clicker game is available in [examples/clicker-game](tree/master/examples/clicker-game). It requires `wasm-pack` installed and `npm`. To run the example, execute `wasm-pack build` and then `cd www; npm install; npm run start`.
 This example only shows minimal features of nuts.
 
-There is another example available in [examples/webstd-example](tree/master/examples/webstd-example).
-It shows how Nuts can be combined with just [stdweb](https://github.com/koute/stdweb) to build a web application.
-It uses multiple activities with domains and lifecycle status changes.
-This example uses [cargo-web](https://github.com/koute/cargo-web) and can be compiled **without** `wasm-pack` or `npm` installed.
+Right now, there are no more examples (some had to be removed due to outdated dependencies). Hopefully that will change at some point.
 
 All examples are set up as their own project. (To avoid polluting the libraries dependencies.)
 Therefore the standard `cargo run --example` will not work. One has to go to the example's directory and build it from there.
