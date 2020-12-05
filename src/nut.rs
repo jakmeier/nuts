@@ -142,6 +142,10 @@ pub(crate) fn publish_custom<A: Any>(a: A) {
     NUT.with(|nut| nut.publish(a))
 }
 
+pub(crate) fn send_custom<RECV: Any, MSG: Any>(a: MSG) {
+    NUT.with(|nut| nut.send_private::<RECV, MSG>(a))
+}
+
 pub(crate) async fn publish_custom_and_await<A: Any>(a: A) {
     NUT.with(move |nut| nut.publish_and_await(a)).await;
 }
@@ -154,7 +158,7 @@ where
 {
     NUT.with(|nut| {
         let closure = ManagedState::pack_closure::<_, _, MSG>(f, id, filter);
-        let topic = Topic::message::<MSG>();
+        let topic = Topic::public_message::<MSG>();
         nut.push_closure(topic, id, closure);
     });
 }
@@ -166,7 +170,7 @@ where
 {
     NUT.with(|nut| {
         let closure = ManagedState::pack_closure_mut::<_, _, MSG>(f, id, filter);
-        let topic = Topic::message::<MSG>();
+        let topic = Topic::public_message::<MSG>();
         nut.push_closure(topic, id, closure);
     });
 }
@@ -178,7 +182,7 @@ where
 {
     NUT.with(|nut| {
         let closure = ManagedState::pack_closure_owned::<_, _, MSG>(f, id, filter);
-        let topic = Topic::message::<MSG>();
+        let topic = Topic::private_message::<MSG>();
         nut.push_closure(topic, id, closure);
     });
 }
@@ -207,7 +211,7 @@ where
 {
     NUT.with(|nut| {
         let closure = ManagedState::pack_domained_closure(f, id, filter);
-        let topic = Topic::message::<MSG>();
+        let topic = Topic::public_message::<MSG>();
         nut.push_closure(topic, id, closure);
     });
 }
@@ -219,7 +223,7 @@ where
 {
     NUT.with(|nut| {
         let closure = ManagedState::pack_domained_closure_mut(f, id, filter);
-        let topic = Topic::message::<MSG>();
+        let topic = Topic::public_message::<MSG>();
         nut.push_closure(topic, id, closure);
     });
 }
@@ -234,7 +238,7 @@ pub(crate) fn register_domained_owned<A, F, MSG>(
 {
     NUT.with(|nut| {
         let closure = ManagedState::pack_domained_closure_owned(f, id, filter);
-        let topic = Topic::message::<MSG>();
+        let topic = Topic::private_message::<MSG>();
         nut.push_closure(topic, id, closure);
     });
 }

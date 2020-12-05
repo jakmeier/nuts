@@ -1,5 +1,6 @@
 use super::*;
 use crate::nut::iac::subscription::OnDelete;
+use core::any::TypeId;
 
 /// A collection of heterogenous Activities
 ///
@@ -54,6 +55,18 @@ impl ActivityContainer {
         self.active.append(&mut other.active);
         self.data.append(&mut other.data);
         self.on_delete.append(&mut other.on_delete);
+    }
+    pub(crate) fn id_lookup(&self, t: TypeId) -> Option<UncheckedActivityId> {
+        // This is not the most efficient (if there are many activities) but it does the job to get something working.
+        // If anyone ever find this to be a performance bottleneck in a real application, this can be fixed with some smarter implementation.
+        #[allow(clippy::unwrap_used)]
+        if let Some(index) = self.data.iter().position(|maybe_activity| {
+            maybe_activity.is_some() && (*maybe_activity.as_ref().unwrap().as_ref()).type_id() == t
+        }) {
+            Some(UncheckedActivityId { index })
+        } else {
+            None
+        }
     }
 }
 

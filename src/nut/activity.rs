@@ -169,20 +169,6 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register_mut(*self, f, Default::default())
     }
-    /// Registers a callback closure on an activity with a specific topic to listen to.
-    /// This variant takes ownership of the message.
-    /// Only subscription per type is allowed. Othwerise, a pnic will occur when publishing.
-    ///
-    /// When using this variant, the subscription handler should take ownership of the message.
-    /// It will compile if it is borrowed instead, but then it will also expect a reference to be published. (Which usually doesn't work due to lifetimes)
-    /// Then, it will not react to normal published messages and can be difficult to debug.
-    pub fn subscribe_owned<F, MSG>(&self, f: F)
-    where
-        F: Fn(&mut A, MSG) + 'static,
-        MSG: Any,
-    {
-        crate::nut::register_owned(*self, f, Default::default())
-    }
 
     /// Registers a callback closure on an activity with a specific topic to listen to.
     /// Has mutable access to the `DomainState` object.
@@ -210,10 +196,29 @@ impl<A: Activity> ActivityId<A> {
     {
         crate::nut::register_domained_mut(*self, f, Default::default())
     }
-    /// Registers a callback closure on an activity with a specific topic to listen to and access to the domain.
-    /// This variant takes ownership of the message.
-    /// Only subscription per type is allowed. Otherwise, a panic will occur when publishing.
-    pub fn subscribe_domained_owned<F, MSG>(&self, f: F)
+
+    /// Registers a callback closure on an activity with a specific topic to listen to.
+    /// Messages sent with `nuts::publish()` are NOT received, only messages sent with `nuts::send_to()`.
+    ///
+    /// Attention! The handler takes ownership of the message.
+    /// It will compile if it is borrowed instead, but then it will also expect a reference to be published. (Which usually doesn't work due to lifetimes)
+    /// Then, it will not react to normally sent messages and can be difficult to debug.
+    ///
+    /// Since the listener takes ownership, it is not possible to have more than one private channel active for the same activity at the same time.
+    /// If multiple private channels are added to an activity, only the last listener is retained. (Older ones are replaced and deleted)
+    pub fn private_channel<F, MSG>(&self, f: F)
+    where
+        F: Fn(&mut A, MSG) + 'static,
+        MSG: Any,
+    {
+        crate::nut::register_owned(*self, f, Default::default())
+    }
+
+    /// Variant of `private_channel` with access to the domain state.
+    ///
+    /// # Panics
+    /// Panics if the activity has not been registered with a domain.   
+    pub fn private_domained_channel<F, MSG>(&self, f: F)
     where
         F: Fn(&mut A, &mut DomainState, MSG) + 'static,
         MSG: Any,

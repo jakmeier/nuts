@@ -297,3 +297,37 @@ fn encapsulate() {
     capsule.execute().expect("Failed executing capsule");
     assert_eq!(counter.get(), 2);
 }
+
+#[test]
+fn create_inchoate_domained_activity_and_subscribe_and_publish_privately() {
+    let main = crate::new_activity(());
+    let a = TestActivity::new();
+    let b = (TestActivity::new(),);
+    let counter = a.shared_counter_ref();
+    let d = TestDomains::DomainA;
+    crate::store_to_domain(&d, 7usize);
+
+    let bid = crate::new_domained_activity(b, &d);
+    bid.private_domained_channel(|_activity, domain, msg: &TestForInt| {
+        let x: usize = *domain.get();
+        assert_eq!(msg.0, x);
+    });
+
+    main.private_channel(move |_, _: Main| {
+        let id = crate::new_domained_activity(a.clone(), &d);
+        id.private_domained_channel(|activity: &mut TestActivity, domain, _: TestUpdateMsg| {
+            let x: usize = *domain.get();
+            assert_eq!(7, x);
+            activity.inc(1);
+        });
+        crate::send_to::<(TestActivity,), _>(TestForInt(7));
+    });
+
+    crate::send_to::<(), _>(Main);
+
+    assert_eq!(counter.get(), 0, "Closure called before update call");
+    crate::send_to::<TestActivity, _>(TestUpdateMsg);
+    assert_eq!(counter.get(), 1);
+    crate::send_to::<TestActivity, _>(TestUpdateMsg);
+    assert_eq!(counter.get(), 2);
+}

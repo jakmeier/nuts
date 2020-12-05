@@ -58,10 +58,10 @@ fn owned_message() {
     let a = TestActivity::new();
     let counter = a.shared_counter_ref();
     let id = crate::new_activity(a);
-    id.subscribe_owned(|activity, _msg: TestMessageNoClone| {
+    id.private_channel(|activity, _msg: TestMessageNoClone| {
         activity.inc(1);
     });
-    crate::publish(TestMessageNoClone);
+    crate::send_to::<TestActivity, _>(TestMessageNoClone);
     assert_eq!(1, counter.get()); // Make sure subscription has been called
 }
 #[test]
@@ -71,12 +71,12 @@ fn owned_domained_message() {
     let d = TestDomains::DomainA;
     crate::store_to_domain(&d, 7usize);
     let id = crate::new_domained_activity(a, &d);
-    id.subscribe_domained_owned(|activity, domain, _msg: TestMessageNoClone| {
+    id.private_domained_channel(|activity, domain, _msg: TestMessageNoClone| {
         let x: usize = *domain.get();
         assert_eq!(7, x);
         activity.inc(1);
     });
-    crate::publish(TestMessageNoClone);
+    crate::send_to::<TestActivity, _>(TestMessageNoClone);
     assert_eq!(1, counter.get()); // Make sure subscription has been called
 }
 
@@ -96,4 +96,54 @@ fn publish_inside_publish() {
     crate::publish(TestUpdateMsg);
 
     assert_eq!(LAYERS, counter.get());
+}
+
+#[test]
+fn private_message() {
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let id = crate::new_activity(a);
+    id.private_channel(|activity, _msg: TestMessageNoClone| {
+        activity.inc(1);
+    });
+    crate::publish(TestMessageNoClone);
+    assert_eq!(0, counter.get()); // Make sure subscription has not been called, yet
+    crate::send_to::<TestActivity, _>(TestMessageNoClone);
+    assert_eq!(1, counter.get()); // Make sure subscription has been called
+}
+
+#[test]
+fn multi_subscribe_private_message() {
+    let a = TestActivity::new();
+    let counter = a.shared_counter_ref();
+    let id = crate::new_activity(a);
+    id.private_channel(|activity, _msg: TestMessageNoClone| {
+        activity.inc(10);
+    });
+    id.private_channel(|activity, _msg: TestMessageNoClone| {
+        activity.inc(1);
+    });
+    crate::publish(TestMessageNoClone);
+    assert_eq!(0, counter.get()); // Make sure subscription has not been called, yet
+    crate::send_to::<TestActivity, _>(TestMessageNoClone);
+    assert_eq!(1, counter.get()); // Make sure second subscription has been called exactly once
+}
+
+#[test]
+fn multi_subscriber_private_message() {
+    let a = TestActivity::new();
+    let b = (TestActivity::new(),);
+    let counter = a.shared_counter_ref();
+    let aid = crate::new_activity(a);
+    let bid = crate::new_activity(b);
+    aid.private_channel(|activity, _msg: TestMessageNoClone| {
+        activity.inc(1);
+    });
+    bid.private_channel(|activity, _msg: TestMessageNoClone| {
+        activity.0.inc(10);
+    });
+    crate::publish(TestMessageNoClone);
+    assert_eq!(0, counter.get()); // Make sure subscription has not been called, yet
+    crate::send_to::<TestActivity, _>(TestMessageNoClone);
+    assert_eq!(1, counter.get()); // Make sure subscription of correct type has been called exactly once
 }

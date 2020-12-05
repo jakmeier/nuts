@@ -18,12 +18,18 @@ impl Nut {
         self.catch_up_deferred_to_quiescence();
     }
     pub(crate) fn publish<MSG: Any>(&self, msg: MSG) {
-        let broadcast = BroadcastInfo::global(msg, Topic::message::<MSG>());
+        let broadcast = BroadcastInfo::global(msg, Topic::public_message::<MSG>());
+        self.deferred_events.push(broadcast.into());
+        self.catch_up_deferred_to_quiescence();
+    }
+    pub(crate) fn send_private<RECV: Any, MSG: Any>(&self, msg: MSG) {
+        let broadcast =
+            BroadcastInfo::local_by_type::<RECV, MSG>(msg, Topic::private_message::<MSG>());
         self.deferred_events.push(broadcast.into());
         self.catch_up_deferred_to_quiescence();
     }
     pub(crate) fn publish_and_await<MSG: Any>(&self, msg: MSG) -> NutsResponse {
-        let broadcast = BroadcastInfo::global(msg, Topic::message::<MSG>());
+        let broadcast = BroadcastInfo::global(msg, Topic::public_message::<MSG>());
         let ticket = Nut::with_response_tracker_mut(|rt| rt.allocate());
         let future = NutsResponse::new(&ticket);
         self.deferred_events

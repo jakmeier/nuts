@@ -211,6 +211,28 @@ pub async fn publish_awaiting_response<A: Any>(a: A) {
     nut::publish_custom_and_await(a).await;
 }
 
+/// Publish a message to a specific activity.
+///
+/// The first type parameter must always be specified.
+/// It determines the receiver of the message.
+/// The message is ignored silently if no such activity has been registered or if it has no private channel for this message.
+///
+/// The second type parameter can usually be deferred by the compiler, it is the type of the message to be sent.
+///
+/// # Example
+/// ```
+/// struct ExampleActivity {}
+/// let id = nuts::new_activity(ExampleActivity {});
+/// id.private_channel(|_activity, msg: usize| {
+///     assert_eq!(msg, 7);
+///     // Your code
+/// });
+/// nuts::send_to::<ExampleActivity, _>(7usize);
+/// ```
+pub fn send_to<RECEIVER: Any, MSG: Any>(msg: MSG) {
+    nut::send_custom::<RECEIVER, MSG>(msg)
+}
+
 #[cfg(debug_assertions)]
 /// Read some information about currently processing activities.
 /// This should be called inside a panic hook.

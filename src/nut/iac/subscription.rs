@@ -20,7 +20,14 @@ pub(crate) struct Subscriptions {
 /// Handlers stored per Activity
 #[derive(Default)]
 pub(crate) struct SubscriptionContainer {
-    data: HashMap<usize, Vec<Subscription>>,
+    data: HashMap<usize, ActivityTopicSubscriptions>,
+}
+
+/// Handlers per type per activity
+#[derive(Default)]
+pub(crate) struct ActivityTopicSubscriptions {
+    shared: Vec<Subscription>,
+    private: Option<Subscription>,
 }
 
 pub(crate) struct Subscription {
@@ -64,12 +71,20 @@ impl Subscriptions {
         type_name: DebugTypeName,
     ) {
         let id = id.into();
-        self.subscriptions
+        let private = topic.unqiue_per_activity();
+        let subs = &mut self
+            .subscriptions
             .try_borrow_mut()
-            .expect(IMPOSSIBLE_ERR_MSG)
-            .entry(topic)
-            .or_insert_with(Default::default)[id]
-            .push(Subscription { handler, type_name });
+            .expect(IMPOSSIBLE_ERR_MSG);
+        let subs_per_activity = &mut subs.entry(topic).or_insert_with(Default::default)[id];
+
+        if private {
+            subs_per_activity.private = Some(Subscription { handler, type_name });
+        } else {
+            subs_per_activity
+                .shared
+                .push(Subscription { handler, type_name });
+        }
     }
     pub(crate) fn get(&self) -> Ref<HashMap<Topic, SubscriptionContainer>> {
         self.subscriptions.borrow()
@@ -77,15 +92,27 @@ impl Subscriptions {
 }
 
 impl SubscriptionContainer {
-    pub fn iter(&self) -> impl Iterator<Item = &Subscription> {
-        self.data.values().flat_map(|f| f.iter())
+    pub fn shared_subscriptions(&self) -> impl Iterator<Item = &Subscription> {
+        self.data.values().flat_map(|f| f.shared.iter())
     }
-    pub fn iter_for(&self, id: UncheckedActivityId) -> impl Iterator<Item = &Subscription> {
-        self.data.get(&id.index).into_iter().flat_map(|f| f.iter())
+    pub fn shared_subscriptions_of_single_activity(
+        &self,
+        id: UncheckedActivityId,
+    ) -> impl Iterator<Item = &Subscription> {
+        self.data
+            .get(&id.index)
+            .into_iter()
+            .flat_map(|f| f.shared.iter())
+    }
+    pub fn private_subscription(&self, id: UncheckedActivityId) -> Option<&Subscription> {
+        self.data
+            .get(&id.index)
+            .map(|f| f.private.as_ref())
+            .flatten()
     }
 }
 impl Index<UncheckedActivityId> for SubscriptionContainer {
-    type Output = Vec<Subscription>;
+    type Output = ActivityTopicSubscriptions;
     fn index(&self, id: UncheckedActivityId) -> &Self::Output {
         &self.data[&id.index]
     }
