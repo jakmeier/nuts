@@ -1,8 +1,14 @@
 # Nuts
 @DOC CRATE
 
-Nuts has reached a minimal viable product (MVP) with version 0.1 published on [crates.io](https://crates.io/crates/nuts).
-But there are more features planned for the future and breaking API changes are very much possible.
+## State of Library
+With the release of Nuts version 0.2 on [crates.io](https://crates.io/crates/nuts), it has reached an important milestone.
+The single-threaded features have all been implemented. Maybe a method here and there needs to be added. But I would not expect to go through major API overhauls again in the existing interface at this point.
+
+There is one big pending feature left, however. This is parallel dispatch, covered in [#2](https://github.com/jakmeier/nuts/issues/2).
+Ideally, that would be implemented under the hood. But likely it will make sense to add some more methods to the API.
+
+If and when parallel dispatch get implemented, Nuts probably looks at a stable 1.0 release.
 
 ## Activities
 @DOC ACTIVITY
