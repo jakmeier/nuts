@@ -19,12 +19,12 @@ impl InchoateActivityContainer {
     pub(crate) fn offset(&self) -> usize {
         self.offset
     }
-    #[cfg(feature = "verbose-debug-log")]
     pub(crate) fn len(&self) -> usize {
         self.activities.len()
     }
     pub(crate) fn flush(&mut self, final_activities: &mut ActivityContainer) {
-        final_activities.append(&mut self.activities)
+        self.offset += self.len();
+        final_activities.append(&mut self.activities);
     }
 }
 

@@ -5,6 +5,7 @@
 * New features introduced:
     * More info in logs when running with feature "verbose-debug-log"
 * Bugfixes:
+    * Fixed an issue where activities ended up using he same data slots. This could happen when activities were added in subscription handlers multiple times with quiescent moments in between.
 * Removed features:
 
 ## 0.2

@@ -189,3 +189,17 @@ fn delete_with_on_leave() {
     id.set_status(LifecycleStatus::Deleted);
     assert_eq!(1, counter.get());
 }
+
+#[test]
+fn create_new_after_delete() {
+    let a = TestActivity::new();
+    let id_a = crate::new_activity(a);
+    id_a.set_status(LifecycleStatus::Deleted);
+    let num_a: UncheckedActivityId = id_a.into();
+
+    let b = (TestActivity::new(),);
+    let id_b = crate::new_activity(b);
+    let num_b: UncheckedActivityId = id_b.into();
+
+    assert_ne!(num_a, num_b);
+}

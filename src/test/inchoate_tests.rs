@@ -306,3 +306,55 @@ fn create_inchoate_domained_activity_and_subscribe_and_publish_privately() {
     crate::send_to::<TestActivity, _>(TestUpdateMsg);
     assert_eq!(counter.get(), 2);
 }
+
+#[test]
+fn create_new_after_delete() {
+    let main = crate::new_activity(());
+
+    main.private_channel(move |_, _: Main| {
+        let a = TestActivity::new();
+        let id_a = crate::new_activity(a);
+        id_a.set_status(LifecycleStatus::Deleted);
+        let num_a: UncheckedActivityId = id_a.into();
+
+        let b = (TestActivity::new(),);
+        let id_b = crate::new_activity(b);
+        let num_b: UncheckedActivityId = id_b.into();
+
+        assert_ne!(num_a, num_b);
+    });
+    crate::send_to::<(), _>(Main);
+}
+
+#[test]
+/// Create a (normal) activity A and register on_delete
+/// Delete A, in A.on_delete:
+///     Create (inchoate) activity B
+///     Register on_delete in B
+///     Delete B, in B.on_delete:
+///         Create C and ensure nothing funky happened to the IDs
+#[allow(non_snake_case)]
+fn complex_scenario_0() {
+    let A = TestActivity::new();
+    let B = (TestActivity::new(), ());
+    let C = (TestActivity::new(), (), ());
+
+    let id_a = crate::new_activity(A);
+
+    id_a.on_delete(move |_| {
+        let id_b = crate::new_activity(B);
+        let num_b: UncheckedActivityId = id_b.into();
+
+        assert_ne!(num_b, id_a.into());
+
+        id_b.on_delete(move |_| {
+            let id_c = crate::new_activity(C);
+            let num_c: UncheckedActivityId = id_c.into();
+            assert_ne!(num_c, num_b);
+            assert_ne!(num_c, id_a.into());
+        });
+        id_b.set_status(LifecycleStatus::Deleted);
+    });
+
+    id_a.set_status(LifecycleStatus::Deleted);
+}
