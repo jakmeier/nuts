@@ -67,7 +67,8 @@ impl Nut {
             assert_ne!(
                 before,
                 LifecycleStatus::Deleted,
-                "Attempted to set activity status after it has been deleted."
+                "Attempted to set activity {} status after it has been deleted.",
+                lifecycle_change.activity.index
             );
             self.activities
                 .try_borrow_mut()
@@ -112,6 +113,6 @@ impl Nut {
 #[cfg(debug_assertions)]
 impl std::fmt::Debug for LifecycleChange {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Tranisition to state: {:?}", self.status)
+        write!(f, "Transition to state: {:?}", self.status)
     }
 }

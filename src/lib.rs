@@ -97,7 +97,14 @@ pub fn new_activity<A>(activity: A) -> ActivityId<A>
 where
     A: Activity,
 {
-    nut::new_activity(activity, DomainId::default(), LifecycleStatus::Active)
+    let a = nut::new_activity(activity, DomainId::default(), LifecycleStatus::Active);
+    #[cfg(feature = "verbose-debug-log")]
+    debug_print!(
+        "New activity {:?}({})",
+        std::any::type_name::<A>(),
+        a.id.index
+    );
+    a
 }
 
 /// Consumes a struct that is registered as an Activity that has access to the specified domain.
@@ -142,7 +149,15 @@ where
     A: Activity,
     D: DomainEnumeration,
 {
-    nut::new_activity(activity, DomainId::new(domain), LifecycleStatus::Active)
+    let a = nut::new_activity(activity, DomainId::new(domain), LifecycleStatus::Active);
+    #[cfg(feature = "verbose-debug-log")]
+    debug_print!(
+        "New activity {:?}({})",
+        std::any::type_name::<A>(),
+        a.id.index
+    );
+
+    a
 }
 
 /// Puts the data object to the domain, which can be accessed by all associated activities.

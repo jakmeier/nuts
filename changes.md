@@ -1,7 +1,14 @@
 # Version history with summary of changes
 
+## 0.2.1
+*Crate size: ???*
+* New features introduced:
+    * More info in logs when running with feature "verbose-debug-log"
+* Bugfixes:
+* Removed features:
+
 ## 0.2
-*Crate size: kB*
+*Crate size: 28.3kB*
 * New features introduced:
     * Essentially, make it possible to do anything anywhere.
       Previously, some calls were only allowed from outside callbacks. This restriction has been lifted entirely.

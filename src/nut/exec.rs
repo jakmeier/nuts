@@ -35,8 +35,12 @@ impl Nut {
     pub(crate) fn catch_up_deferred_to_quiescence(&self) {
         // A Nut only allows single-threaded access, relaxed ordering is fine.
         if !self.executing.swap(true, Ordering::Relaxed) {
+            #[cfg(feature = "verbose-debug-log")]
+            debug_print!("Start Executing from quiescent moment");
             self.unchecked_catch_up_deferred_to_quiescence();
             self.executing.store(false, Ordering::Relaxed);
+            #[cfg(feature = "verbose-debug-log")]
+            debug_print!("Quiescence Reached");
         }
     }
 
@@ -45,12 +49,26 @@ impl Nut {
         while let Some(deferred) = self.deferred_events.pop() {
             #[cfg(debug_assertions)]
             let debug_message = format!("Executing: {:?}", deferred);
-            #[cfg(features="verbose-debug-log")]
+
+            #[cfg(feature = "verbose-debug-log")]
+            #[cfg(debug_assertions)]
             debug_print!("{}", debug_message);
+
+            #[cfg(feature = "verbose-debug-log")]
+            #[cfg(debug_assertions)]
+            if self.deferred_events.len() > 0 {
+                let events = self.deferred_events.events_debug_list();
+                debug_print!(
+                    "{} more events in queue: {}",
+                    self.deferred_events.len(),
+                    events
+                );
+            }
 
             #[cfg(not(debug_assertions))]
             self.exec_deferred(deferred);
 
+            // Catch panics inside executed closures
             // Unfortunately, this currently does not seem to work on the web.
             // To have good web debugging, the nuts panic hook should be used.
             #[cfg(debug_assertions)]
@@ -114,9 +132,11 @@ impl std::fmt::Debug for Deferred {
             Self::Broadcast(b) => write!(f, "Broadcasting {:?}", b),
             Self::BroadcastAwaitingResponse(b, _rs) => write!(f, "Broadcasting {:?}", b),
             Self::Subscription(sub) => write!(f, "{:?}", sub),
-            Self::OnDeleteSubscription(_, _) => write!(f, "Adding new on delete listener"),
+            Self::OnDeleteSubscription(_id, _) => {
+                write!(f, "Adding new on delete listener {}", _id.index)
+            }
             Self::LifecycleChange(lc) => write!(f, "{:?}", lc),
-            Self::RemoveActivity(_id) => write!(f, "Delete activity."),
+            Self::RemoveActivity(_id) => write!(f, "Delete activity {}.", _id.index),
             Self::DomainStore(ds) => write!(f, "{:?}", ds),
             Self::FlushInchoateActivities => write!(f, "Adding new activities previously deferred"),
         }

@@ -130,10 +130,20 @@ where
                 .add(activity, domain_index, status)
         } else {
             nut.deferred_events.push(Deferred::FlushInchoateActivities);
-            nut.inchoate_activities
+            let a = nut
+                .inchoate_activities
                 .try_borrow_mut()
                 .expect(IMPOSSIBLE_ERR_MSG)
-                .add(activity, domain_index, status)
+                .add(activity, domain_index, status);
+            #[cfg(feature = "verbose-debug-log")]
+            #[cfg(debug_assertions)]
+            debug_print!(
+                "Added activity as inchoate. ID = {} ({} complete activities, {} inchoate activities exist)", 
+                a.id.index,
+                nut.inchoate_activities.try_borrow().expect(IMPOSSIBLE_ERR_MSG).offset(),
+                nut.inchoate_activities.try_borrow().expect(IMPOSSIBLE_ERR_MSG).len() - 1
+            );
+            a
         }
     })
 }
