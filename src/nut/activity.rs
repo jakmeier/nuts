@@ -230,6 +230,27 @@ impl<A: Activity> ActivityId<A> {
         crate::nut::register_domained_owned(*self, f, Default::default())
     }
 
+    /// Variant of ``private_channel` with subscription mask.
+    pub fn private_channel_masked<F, MSG>(&self, mask: SubscriptionFilter, f: F)
+    where
+        F: Fn(&mut A, MSG) + 'static,
+        MSG: Any,
+    {
+        crate::nut::register_owned(*self, f, mask)
+    }
+
+    /// Variant of `private_channel` with access to the domain state and subscription mask.
+    ///
+    /// # Panics
+    /// Panics if the activity has not been registered with a domain.   
+    pub fn private_domained_channel_masked<F, MSG>(&self, mask: SubscriptionFilter, f: F)
+    where
+        F: Fn(&mut A, &mut DomainState, MSG) + 'static,
+        MSG: Any,
+    {
+        crate::nut::register_domained_owned(*self, f, mask)
+    }
+
     /// Registers a callback closure on an activity with a specific topic to listen to with filtering options.
     pub fn subscribe_masked<F, MSG>(&self, mask: SubscriptionFilter, f: F)
     where

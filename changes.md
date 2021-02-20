@@ -4,6 +4,7 @@
 *Crate size: ???*
 * New features introduced:
     * More info in logs when running with feature "verbose-debug-log"
+    * Private messages can now also have subscription masks, allowing activities to receive private messages when inactive.
 * Bugfixes:
     * Fixed an issue where activities ended up using he same data slots. This could happen when activities were added in subscription handlers multiple times with quiescent moments in between.
 * Removed features:
