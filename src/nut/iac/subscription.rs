@@ -32,6 +32,7 @@ pub(crate) struct ActivityTopicSubscriptions {
 
 pub(crate) struct Subscription {
     pub(crate) handler: Handler,
+    #[allow(dead_code)]
     pub(crate) type_name: DebugTypeName,
 }
 

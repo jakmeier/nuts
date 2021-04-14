@@ -4,10 +4,18 @@
 
 use crate::{Activity, ActivityContainer, ActivityId, DomainId, LifecycleStatus};
 
-#[derive(Default)]
 pub(crate) struct InchoateActivityContainer {
     activities: ActivityContainer,
     offset: usize,
+}
+
+impl Default for InchoateActivityContainer {
+    fn default() -> Self {
+        Self {
+            activities: Default::default(),
+            offset: 1, // for NotAnActivity
+        }
+    }
 }
 
 impl InchoateActivityContainer {

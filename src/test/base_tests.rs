@@ -20,6 +20,25 @@ fn closure_registration() {
 }
 
 #[test]
+fn closure_registration_no_activity() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let executed: Rc<AtomicBool> = Rc::new(AtomicBool::new(false));
+    let cloned_executed = executed.clone();
+    crate::subscribe(move |_: &TestUpdateMsg| {
+        cloned_executed.store(true, Ordering::SeqCst);
+    });
+    assert!(
+        !executed.load(Ordering::SeqCst),
+        "Closure called before update call"
+    );
+    crate::publish(TestUpdateMsg);
+    assert!(executed.load(Ordering::SeqCst));
+    crate::publish(TestUpdateMsg);
+    assert!(executed.load(Ordering::SeqCst));
+}
+
+#[test]
 fn domained_activity() {
     let a = TestActivity::new();
     let d = TestDomains::DomainA;

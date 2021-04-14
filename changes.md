@@ -1,7 +1,12 @@
 # Version history with summary of changes
 
-## 0.2.1
+## Unreleased
 *Crate size: ???*
+* New features introduced:
+    * Subscription handlers can be registered without an activity. (E.g. `nuts::subscribe(|msg: &MyMessage| {...} )`)
+
+## 0.2.1
+*Crate size: 29.4kB*
 * New features introduced:
     * More info in logs when running with feature "verbose-debug-log"
     * Private messages can now also have subscription masks, allowing activities to receive private messages when inactive.

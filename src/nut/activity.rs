@@ -37,6 +37,9 @@ pub struct ActivityId<A> {
     phantom: std::marker::PhantomData<A>,
 }
 
+/// This type is used for subscriptions without activity. It is zero sized, hence should be a zero-cost abstraction.
+pub(crate) struct NotAnActivity;
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 /// Pointer to an activity that has been registered.
 /// Can be used to set the lifecycle stats of activities.
@@ -230,7 +233,7 @@ impl<A: Activity> ActivityId<A> {
         crate::nut::register_domained_owned(*self, f, Default::default())
     }
 
-    /// Variant of ``private_channel` with subscription mask.
+    /// Variant of `private_channel` with subscription mask.
     pub fn private_channel_masked<F, MSG>(&self, mask: SubscriptionFilter, f: F)
     where
         F: Fn(&mut A, MSG) + 'static,
@@ -332,6 +335,12 @@ impl UncheckedActivityId {
     /// Right now, there should still be no UB but that might change in future versions.
     pub fn forge_from_usize(index: usize) -> Self {
         Self { index }
+    }
+}
+
+impl NotAnActivity {
+    pub fn id() -> ActivityId<NotAnActivity> {
+        ActivityId::<NotAnActivity>::new(0, DomainId::default())
     }
 }
 

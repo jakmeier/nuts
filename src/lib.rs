@@ -173,6 +173,17 @@ where
     nut::write_domain(domain, data)
 }
 
+/// Registers a callback closure with a specific topic to listen to.
+///
+/// This variant of subscription has no activity. See [`ActivityId::subscribe`](struct.ActivityId.html#method.subscribe) and friends for other subscription options.
+pub fn subscribe<F, MSG>(f: F)
+where
+    F: Fn(&MSG) + 'static,
+    MSG: Any,
+{
+    crate::nut::register_no_activity(f)
+}
+
 /// Send the message to all subscribed activities
 ///
 // @ START-DOC PUBLISH

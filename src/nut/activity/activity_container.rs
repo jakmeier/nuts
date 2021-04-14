@@ -14,6 +14,13 @@ pub(crate) struct ActivityContainer {
 }
 
 impl ActivityContainer {
+    pub(crate) fn new() -> Self {
+        Self {
+            data: vec![Some(Box::new(NotAnActivity))],
+            active: vec![LifecycleStatus::Active],
+            on_delete: vec![OnDelete::None],
+        }
+    }
     pub(crate) fn add<A: Activity>(
         &mut self,
         a: A,

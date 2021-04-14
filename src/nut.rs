@@ -61,7 +61,7 @@ struct Nut {
     /// be queued and only executed after the activity is available anyway)
     inchoate_activities: RefCell<InchoateActivityContainer>,
     /// For debugging messages
-    #[cfg(debug_assertions)]
+    #[allow(dead_code)]
     active_activity_name: std::cell::Cell<Option<DebugTypeName>>,
 }
 
@@ -71,7 +71,10 @@ pub(crate) type Handler = Box<dyn Fn(&mut ActivityContainer, &mut ManagedState)>
 
 impl Nut {
     fn new() -> Self {
-        Default::default()
+        Self {
+            activities: RefCell::new(ActivityContainer::new()),
+            ..Default::default()
+        }
     }
     fn quiescent(&self) -> bool {
         !self.executing.load(std::sync::atomic::Ordering::Relaxed)
@@ -175,6 +178,18 @@ pub(crate) async fn publish_custom_and_await<A: Any>(a: A) {
     NUT.with(move |nut| nut.publish_and_await(a)).await;
 }
 
+pub(crate) fn register_no_activity<F, MSG>(f: F)
+where
+    F: Fn(&MSG) + 'static,
+    MSG: Any,
+{
+    NUT.with(|nut| {
+        let closure = ManagedState::pack_closure_no_activity::<_, MSG>(f);
+        let topic = Topic::public_message::<MSG>();
+        let id = NotAnActivity::id();
+        nut.push_closure(topic, id, closure);
+    });
+}
 pub(crate) fn register<A, F, MSG>(id: ActivityId<A>, f: F, filter: SubscriptionFilter)
 where
     A: Activity,

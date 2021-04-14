@@ -130,6 +130,18 @@ impl ManagedState {
         )
     }
 
+    pub(crate) fn pack_closure_no_activity<F, MSG>(f: F) -> Handler
+    where
+        F: Fn(&MSG) + 'static,
+        MSG: Any,
+    {
+        Box::new(
+            move |_activities: &mut ActivityContainer, managed_state: &mut ManagedState| {
+                let msg = managed_state.current_broadcast();
+                f(msg)
+            },
+        )
+    }
     pub(crate) fn pack_closure<A, F, MSG>(
         f: F,
         index: ActivityId<A>,
