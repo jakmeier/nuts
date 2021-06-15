@@ -21,7 +21,7 @@ use std::ops::{Index, IndexMut};
 ///
 /// It is important to understand that Activities are uniquely defined by their type.
 /// You cannot create two activities from the same type. (But you can, for example, create a wrapper type around it.)
-/// This allows activities to be referenced by their type, which must be known at run-time. reference by their type
+/// This allows activities to be referenced by their type, which must be known at run-time.
 // @ END-DOC ACTIVITY
 pub trait Activity: Any {}
 impl<T: Any> Activity for T {}
